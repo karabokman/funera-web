@@ -18,6 +18,7 @@
         <li><a class="hover:text-white" href="mailto:{{ site.email }}">{{ site.email }}</a></li>
         {% if site.phone %}<li><a class="hover:text-white" href="tel:{{ site.phone }}">{{ site.phone }}</a></li>{% endif %}
         <li><a class="hover:text-white" href="{% url 'pages:privacy' %}">Privacy notice</a></li>
+        <li><a class="hover:text-white" href="{% url 'billing:portal' %}">Client login</a></li>
         <li><a class="hover:text-white" href="{% url 'pages:terms' %}">Website terms</a></li>
         <li><a class="hover:text-white" href="{% url 'pages:subscription_terms' %}">Subscription terms</a></li>
       </ul></div>

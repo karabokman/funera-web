@@ -1,0 +1,9 @@
+Refund requested
+
+Business: {{ customer.business_name }} ({{ customer.email }})
+Payment:  {{ refund.payment.pf_payment_id }} (R{{ refund.payment.amount_gross }})
+Amount:   R{{ refund.amount }}
+Reason:   {{ refund.reason }}
+
+Review it in the admin and use "Process selected refunds" or "Decline selected refunds":
+{{ site_url }}/{{ admin_url }}billing/refund/

@@ -1,0 +1,72 @@
+{% extends "billing/portal/base.html" %}
+{% block portal %}
+<p><a class="text-sm font-semibold text-brand-dark underline" href="{% url 'billing:portal' %}">&larr; All subscriptions</a></p>
+<h1 class="h-section mt-3">{{ subscription.customer.business_name }} · {{ subscription.plan.name }}</h1>
+<p class="mt-2 text-slate-600">Reference {{ subscription.reference }} · <span class="font-semibold">{{ subscription.get_status_display }}</span></p>
+
+<div class="card mt-8">
+  <h2 class="text-lg font-bold">Billing</h2>
+  <dl class="mt-3 grid gap-3 text-sm sm:grid-cols-3">
+    <div><dt class="text-slate-500">Plan billed</dt><dd class="font-semibold">{{ subscription.get_billing_period_display }}</dd></div>
+    <div><dt class="text-slate-500">Amount</dt><dd class="font-semibold">R{{ subscription.recurring_amount|floatformat:"2g" }}</dd></div>
+    <div><dt class="text-slate-500">{% if subscription.status == "paused" %}Restarts about{% else %}Next payment{% endif %}</dt><dd class="font-semibold">{% if subscription.status == "paused" %}{{ subscription.paused_until|date:"j M Y"|default:"—" }}{% elif subscription.status == "cancelled" %}—{% else %}{{ subscription.next_billing_date|date:"j M Y"|default:"—" }}{% endif %}</dd></div>
+  </dl>
+  {% if subscription.status == "past_due" %}<p class="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">Your last payment did not go through. PayFast will try again; contact us if you need help.</p>{% endif %}
+</div>
+
+{% if subscription.status == "active" or subscription.status == "paused" %}
+<div class="mt-6 grid gap-6 md:grid-cols-2">
+  {% if subscription.status == "active" %}
+  <form method="post" action="{% url 'billing:portal_pause' subscription.reference %}" class="card space-y-4">{% csrf_token %}
+    <h2 class="text-lg font-bold">Pause payments</h2>
+    <p class="text-sm text-slate-600">Skip up to {{ max_pause }} billing periods. Payments restart by themselves afterwards, or you can resume sooner.</p>
+    <div><label class="label" for="{{ pause_form.cycles.id_for_label }}">{{ pause_form.cycles.label }}</label>{{ pause_form.cycles }}</div>
+    <button type="submit" class="btn-outline">Pause</button>
+  </form>
+  {% else %}
+  <form method="post" action="{% url 'billing:portal_resume' subscription.reference %}" class="card space-y-4">{% csrf_token %}
+    <h2 class="text-lg font-bold">Resume payments</h2>
+    <p class="text-sm text-slate-600">Your subscription is paused. Resume to start collections again.</p>
+    <button type="submit" class="btn-primary">Resume now</button>
+  </form>
+  {% endif %}
+  {% if can_switch %}
+  <form method="post" action="{% url 'billing:portal_switch' subscription.reference %}" class="card space-y-4">{% csrf_token %}
+    <h2 class="text-lg font-bold">Switch to {{ other_period }} billing</h2>
+    <p class="text-sm text-slate-600">R{{ other_price|floatformat:"2g" }} per {% if other_period == "annual" %}year{% else %}month{% endif %}, starting at your next payment. What you have already paid is not changed.</p>
+    <input type="hidden" name="billing_period" value="{{ other_period }}">
+    <button type="submit" class="btn-outline">Switch to {{ other_period }}</button>
+  </form>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="card mt-6">
+  <h2 class="text-lg font-bold">Payments</h2>
+  {% if payments %}
+  <ul class="mt-3 divide-y divide-line text-sm">
+    {% for row in payments %}
+    <li class="flex flex-wrap items-center justify-between gap-3 py-3">
+      <span><span class="font-semibold">R{{ row.payment.amount_gross|floatformat:"2g" }}</span> · {{ row.payment.received_at|date:"j M Y" }} · {{ row.payment.status|title }}{% if row.refunded %} · refunded R{{ row.refunded|floatformat:"2g" }}{% endif %}{% if row.open_request %} · refund requested{% endif %}</span>
+      {% if row.can_request %}<a class="font-semibold text-brand-dark underline" href="{% url 'billing:portal_refund' row.payment.pf_payment_id %}">Request a refund</a>{% endif %}
+    </li>{% endfor %}
+  </ul>
+  <p class="mt-3 text-xs text-slate-500">Refunds can be requested within {{ refund_days }} days of a payment.</p>
+  {% else %}<p class="mt-3 text-sm text-slate-600">No payments yet.</p>{% endif %}
+</div>
+
+{% if subscription.status != "cancelled" %}
+<form method="post" action="{% url 'billing:portal_cancel' subscription.reference %}" class="card mt-6 space-y-4">{% csrf_token %}
+  <h2 class="text-lg font-bold">Cancel subscription</h2>
+  <p class="text-sm text-slate-600">Cancelling stops all future payments. Amounts already paid are not refunded unless you ask for a refund above.</p>
+  <div><label class="label" for="{{ cancel_form.reason.id_for_label }}">{{ cancel_form.reason.label }}</label>{{ cancel_form.reason }}</div>
+  <label class="flex items-start gap-3 text-sm text-slate-700"><input type="checkbox" name="confirm" class="mt-1 h-5 w-5 rounded border-line text-brand" required><span>{{ cancel_form.confirm.label }}</span></label>
+  <button type="submit" class="btn-outline">Cancel subscription</button>
+</form>
+{% endif %}
+
+{% if events %}
+<div class="mt-6"><h2 class="text-sm font-bold uppercase tracking-wide text-slate-500">Recent activity</h2>
+<ul class="mt-2 space-y-1 text-sm text-slate-600">{% for e in events %}<li>{{ e.created_at|date:"j M Y H:i" }} · {{ e.kind|cut:"_"|title }}{% if e.detail %} · {{ e.detail }}{% endif %}</li>{% endfor %}</ul></div>
+{% endif %}
+{% endblock %}

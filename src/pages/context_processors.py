@@ -20,6 +20,7 @@ def site(request):
             "notice_version": settings.PRIVACY_NOTICE_VERSION,
             "retention_months": settings.LEAD_RETENTION_MONTHS,
             "plausible_domain": settings.PLAUSIBLE_DOMAIN,
+            "portal_minutes": settings.PORTAL_LOGIN_MINUTES,
             "billing_enabled": is_configured(),
             "plausible_script": settings.PLAUSIBLE_SCRIPT_URL,
         }

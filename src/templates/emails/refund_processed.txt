@@ -1,0 +1,5 @@
+Hello {{ customer.name }},
+
+We have refunded R{{ refund.amount }} to the card you paid with. It usually shows on your statement within a few working days.
+
+{{ brand }}

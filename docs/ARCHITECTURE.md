@@ -17,7 +17,7 @@ Plans are cumulative (Starter ⊂ Professional ⊂ Enterprise). Each feature sto
 5. Sales works the lead in the admin (status, notes, CSV export). `purge_old_leads` deletes unconverted leads older than `LEAD_RETENTION_MONTHS`.
 
 ## Subscriptions
-`billing` owns Customer, Subscription and Payment and depends on `catalog` and `leads` only. `billing/payfast.py` is the gateway adapter (no database); `billing/services.py` holds the rules; views are thin. See [SUBSCRIPTIONS.md](SUBSCRIPTIONS.md).
+`billing` owns Customer, Subscription and Payment and depends on `catalog` and `leads` only. `billing/payfast.py` is the gateway adapter (no database); `billing/services.py` holds the rules; views are thin. Modules: `lifecycle.py` (pause, resume, switch, cancel), `refunds.py`, `portal_auth.py` (e-mailed sign-in links) and `portal_views.py`. Every change goes to PayFast first and is saved locally only when PayFast confirms, so the two never disagree. See [SUBSCRIPTIONS.md](SUBSCRIPTIONS.md).
 
 ## Security
 Strict CSP without inline code (admin excluded), Permissions-Policy, COOP, HSTS, secure cookies, `django-axes` on admin logins, configurable admin URL, formula-safe CSV export, JSON-LD escaped for `<script>`. Health check at `/healthz/` (database round trip) is exempt from the HTTPS redirect.

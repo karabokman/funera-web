@@ -60,3 +60,19 @@ class PricingDisplayTests(TestCase):
     def test_inactive_plan_is_hidden(self):
         Plan.objects.filter(code="enterprise").update(is_active=False)
         self.assertEqual(len(services.active_plans()), 2)
+
+
+class AnnualPriceTests(TestCase):
+    def test_annual_offer_and_saving(self):
+        plan = Plan.objects.get(code="starter")
+        self.assertFalse(plan.has_annual)
+        plan.monthly_price, plan.annual_price = Decimal("1000"), Decimal("10000")
+        self.assertTrue(plan.has_annual)
+        self.assertEqual(plan.annual_saving, Decimal("2000"))
+
+    def test_no_saving_shown_when_annual_costs_the_same_or_more(self):
+        plan = Plan.objects.get(code="starter")
+        plan.monthly_price, plan.annual_price = Decimal("1000"), Decimal("12000")
+        self.assertIsNone(plan.annual_saving)
+        plan.annual_price = None
+        self.assertIsNone(plan.annual_saving)

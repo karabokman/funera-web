@@ -18,8 +18,8 @@ from django.utils import timezone
 from catalog.models import Plan
 
 from . import payfast
-from .models import Customer, Payment, Subscription
-from .signals import subscription_activated
+from .models import Customer, Payment, Subscription, SubscriptionEvent
+from .signals import subscription_activated, subscription_status_changed
 
 logger = logging.getLogger(__name__)
 ZERO = Decimal("0.00")
@@ -51,9 +51,37 @@ def is_rate_limited(visitor: str) -> bool:
     )
 
 
+def add_months(day: date, months: int) -> date:
+    """The same day ``months`` later, clamped to the end of a shorter month (31 Jan + 1 month = 28 Feb)."""
+    index = day.year * 12 + (day.month - 1) + months
+    year, month = divmod(index, 12)
+    return date(year, month + 1, min(day.day, calendar.monthrange(year, month + 1)[1]))
+
+
 def add_one_month(day: date) -> date:
-    year, month = (day.year + 1, 1) if day.month == 12 else (day.year, day.month + 1)
-    return date(year, month, min(day.day, calendar.monthrange(year, month)[1]))
+    return add_months(day, 1)
+
+
+def record_event(
+    subscription: Subscription, kind: str, detail: str = "", actor: str = SubscriptionEvent.Actor.SYSTEM
+) -> None:
+    SubscriptionEvent.objects.create(subscription=subscription, kind=kind, detail=detail[:300], actor=actor)
+
+
+def set_status(subscription: Subscription, new: str, *, actor: str, kind: str, detail: str = "", **fields) -> None:
+    """The one place a subscription changes status: saves it, writes the audit event and tells listeners."""
+    old = subscription.status
+    subscription.status = new
+    for name, value in fields.items():
+        setattr(subscription, name, value)
+    subscription.save()
+    record_event(subscription, kind, detail, actor)
+    if old != new:
+        transaction.on_commit(
+            lambda: subscription_status_changed.send_robust(
+                sender=Subscription, subscription=subscription, old=old, new=new
+            )
+        )
 
 
 def client_ip(request) -> str:
@@ -71,6 +99,10 @@ def client_ip(request) -> str:
 def create_subscription(*, plan: Plan, cleaned: dict, visitor_hash: str) -> Subscription:
     if not plan.has_price:
         raise ValueError("A plan without a price cannot be bought online.")
+    period = cleaned.get("billing_period") or Subscription.Period.MONTHLY
+    if period == Subscription.Period.ANNUAL and not plan.has_annual:
+        raise ValueError("This plan has no annual price.")
+    recurring = plan.annual_price if period == Subscription.Period.ANNUAL else plan.monthly_price
     now = timezone.now()
     customer = Customer.objects.create(
         name=cleaned["name"],
@@ -85,8 +117,9 @@ def create_subscription(*, plan: Plan, cleaned: dict, visitor_hash: str) -> Subs
     return Subscription.objects.create(
         customer=customer,
         plan=plan,
-        initial_amount=plan.monthly_price + (plan.setup_fee or ZERO),
-        recurring_amount=plan.monthly_price,
+        billing_period=period,
+        initial_amount=recurring + (plan.setup_fee or ZERO),
+        recurring_amount=recurring,
     )
 
 
@@ -109,12 +142,14 @@ def build_checkout(subscription: Subscription) -> Checkout:
         "m_payment_id": subscription.reference,
         "amount": f"{subscription.initial_amount:.2f}",
         "item_name": f"{settings.BRAND_NAME} {subscription.plan.name} plan"[:100],
-        "item_description": f"Monthly subscription for {customer.business_name}"[:255],
+        "item_description": f"{subscription.get_billing_period_display()} subscription for {customer.business_name}"[
+            :255
+        ],
         "email_confirmation": "1",
         "subscription_type": "1",
-        "billing_date": add_one_month(timezone.localdate()).isoformat(),
+        "billing_date": add_months(timezone.localdate(), subscription.months_per_period).isoformat(),
         "recurring_amount": f"{subscription.recurring_amount:.2f}",
-        "frequency": payfast.FREQUENCY_MONTHLY,
+        "frequency": subscription.payfast_frequency,
         "cycles": "0",
     }
     url, fields = payfast.signed_checkout(values)
@@ -178,26 +213,57 @@ def _apply(subscription_id: int, data: dict, gross: Decimal) -> Payment | None:
         if not created:
             payment.status = status
             payment.save(update_fields=["status"])
+    actor = SubscriptionEvent.Actor.PAYFAST
     if status == "COMPLETE":
-        _mark_paid(subscription, data.get("token", ""))
+        _mark_paid(subscription, data)
     elif status == "FAILED" and subscription.status == Subscription.Status.ACTIVE:
-        subscription.status = Subscription.Status.PAST_DUE
-        subscription.save(update_fields=["status"])
+        set_status(
+            subscription,
+            Subscription.Status.PAST_DUE,
+            actor=actor,
+            kind="payment_failed",
+            detail=f"PayFast payment {pf_id}",
+        )
     elif status == "CANCELLED" and subscription.status != Subscription.Status.CANCELLED:
-        subscription.status = Subscription.Status.CANCELLED
-        subscription.cancelled_at = timezone.now()
-        subscription.save(update_fields=["status", "cancelled_at"])
+        set_status(
+            subscription,
+            Subscription.Status.CANCELLED,
+            actor=actor,
+            kind="cancelled",
+            detail="Cancelled at PayFast",
+            cancelled_at=timezone.now(),
+        )
     return payment
 
 
-def _mark_paid(subscription: Subscription, token: str) -> None:
+def _next_date(data: dict, subscription: Subscription) -> date:
+    """PayFast's own next-collection date when it sends one, otherwise one period after today."""
+    try:
+        return date.fromisoformat(data.get("billing_date", ""))
+    except ValueError:
+        return add_months(timezone.localdate(), subscription.months_per_period)
+
+
+def _mark_paid(subscription: Subscription, data: dict) -> None:
     first_time = subscription.activated_at is None
-    subscription.status = Subscription.Status.ACTIVE
-    if token:
-        subscription.payfast_token = token
+    fields = {"next_billing_date": _next_date(data, subscription), "paused_until": None}
+    if data.get("token"):
+        fields["payfast_token"] = data["token"]
     if first_time:
-        subscription.activated_at = timezone.now()
-    subscription.save()
+        fields["activated_at"] = timezone.now()
+    kind = (
+        "activated"
+        if first_time
+        else ("recovered" if subscription.status != Subscription.Status.ACTIVE else "payment_received")
+    )
+    set_status(
+        subscription,
+        Subscription.Status.ACTIVE,
+        actor=SubscriptionEvent.Actor.PAYFAST,
+        kind=kind,
+        detail=f"PayFast payment {data.get('pf_payment_id', '')}",
+        **fields,
+    )
     if first_time:
         transaction.on_commit(lambda: _welcome(subscription))
 
@@ -232,12 +298,17 @@ def _welcome(subscription: Subscription) -> None:
             logger.error("subscription_activated receiver %r failed: %r", receiver, outcome)
 
 
-def cancel(subscription: Subscription) -> None:
+def cancel(subscription: Subscription, *, actor: str = SubscriptionEvent.Actor.STAFF, detail: str = "") -> None:
     """Cancel at PayFast first; only when PayFast confirms is the subscription marked cancelled here."""
     if subscription.status == Subscription.Status.CANCELLED:
         return
     if subscription.payfast_token:
         payfast.cancel_subscription(subscription.payfast_token)
-    subscription.status = Subscription.Status.CANCELLED
-    subscription.cancelled_at = timezone.now()
-    subscription.save(update_fields=["status", "cancelled_at"])
+    set_status(
+        subscription,
+        Subscription.Status.CANCELLED,
+        actor=actor,
+        kind="cancelled",
+        detail=detail,
+        cancelled_at=timezone.now(),
+    )

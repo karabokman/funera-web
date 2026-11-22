@@ -5,7 +5,7 @@ from .models import Feature, Plan
 
 @admin.register(Plan)
 class PlanAdmin(admin.ModelAdmin):
-    list_display = ("name", "code", "monthly_price", "setup_fee", "is_featured", "is_active", "order")
+    list_display = ("name", "code", "monthly_price", "annual_price", "setup_fee", "is_featured", "is_active", "order")
     list_editable = ("order", "is_active")
     prepopulated_fields = {}
 

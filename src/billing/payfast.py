@@ -14,7 +14,8 @@ import logging
 import socket
 import urllib.error
 import urllib.request
-from urllib.parse import quote_plus
+from decimal import Decimal
+from urllib.parse import quote_plus, urlencode
 
 from django.conf import settings
 from django.core.cache import cache
@@ -136,19 +137,57 @@ def confirmed_by_payfast(pairs) -> bool:
         raise GatewayUnavailable(str(exc)) from exc
 
 
-def cancel_subscription(token: str) -> None:
-    """Stop future collections. Raises ``GatewayUnavailable`` unless PayFast confirms the cancellation."""
+def _call(method: str, path: str, body: dict | None = None) -> dict:
+    """One signed call to PayFast's REST API. Body fields are signed together with the header fields. Raises
+    ``GatewayUnavailable`` unless PayFast answers ``status: success``."""
     stamp = timezone.localtime().replace(microsecond=0).isoformat()
-    params = {"merchant-id": settings.PAYFAST_MERCHANT_ID, "version": "v1", "timestamp": stamp}
-    headers = {**params, "signature": api_signature(params, settings.PAYFAST_PASSPHRASE)}
-    url = f"{API_URL}/subscriptions/{token}/cancel" + ("?testing=true" if settings.PAYFAST_SANDBOX else "")
-    request = urllib.request.Request(url, method="PUT", headers=headers)
+    body = {key: str(value) for key, value in (body or {}).items()}
+    header_fields = {"merchant-id": settings.PAYFAST_MERCHANT_ID, "version": "v1", "timestamp": stamp}
+    headers = {**header_fields, "signature": api_signature({**header_fields, **body}, settings.PAYFAST_PASSPHRASE)}
+    url = f"{API_URL}{path}" + ("?testing=true" if settings.PAYFAST_SANDBOX else "")
+    data = urlencode(body).encode() if body else None
+    if data:
+        headers["Content-Type"] = "application/x-www-form-urlencoded"
+    request = urllib.request.Request(url, data=data, method=method, headers=headers)
     try:
         with urllib.request.urlopen(request, timeout=settings.PAYFAST_TIMEOUT) as response:  # noqa: S310
-            body = json.loads(response.read().decode() or "{}")
+            result = json.loads(response.read().decode() or "{}")
     except urllib.error.HTTPError as exc:
         raise GatewayUnavailable(f"PayFast answered {exc.code}") from exc
     except (urllib.error.URLError, TimeoutError, OSError, ValueError) as exc:
         raise GatewayUnavailable(str(exc)) from exc
-    if body.get("status") != "success":
-        raise GatewayUnavailable(f"PayFast did not confirm the cancellation: {body}")
+    if result.get("status") != "success":
+        raise GatewayUnavailable(f"PayFast did not confirm the request: {result}")
+    return result
+
+
+def cents(amount) -> int:
+    return int((Decimal(amount) * 100).to_integral_value())
+
+
+def cancel_subscription(token: str) -> None:
+    """Stop future collections."""
+    _call("PUT", f"/subscriptions/{token}/cancel")
+
+
+def pause_subscription(token: str, cycles: int) -> None:
+    """Skip the next ``cycles`` collections; PayFast restarts them by itself afterwards."""
+    _call("PUT", f"/subscriptions/{token}/pause", {"cycles": cycles})
+
+
+def unpause_subscription(token: str) -> None:
+    _call("PUT", f"/subscriptions/{token}/unpause")
+
+
+def update_subscription(token: str, *, amount, frequency: str, run_date) -> None:
+    """Change what future collections charge (amount in rand), how often, and the next collection date."""
+    _call(
+        "PATCH",
+        f"/subscriptions/{token}/update",
+        {"amount": cents(amount), "frequency": frequency, "run_date": run_date.isoformat()},
+    )
+
+
+def refund_payment(pf_payment_id: str, amount, reason: str) -> None:
+    """Return ``amount`` (rand) of an earlier payment to the buyer's card."""
+    _call("POST", f"/refunds/{pf_payment_id}", {"amount": cents(amount), "reason": reason[:100], "notify_buyer": 1})

@@ -15,7 +15,9 @@ A server with Docker, a domain, a TLS-terminating reverse proxy (Caddy or nginx)
 1. In PayFast (Settings > Integration) set a passphrase and use the same value as `PAYFAST_PASSPHRASE`. Put your merchant id/key in `.env`. Test first with `PAYFAST_SANDBOX=True` and sandbox credentials, then set `PAYFAST_SANDBOX=False`.
 2. The notification URL `https://<domain>/billing/payfast/itn/` must be reachable from the internet over https and must not be blocked by the proxy.
 3. Confirm `PAYFAST_ALLOWED_NETWORKS` against PayFast's current "ports and IP addresses" page. Set `BILLING_TRUSTED_PROXIES` to the number of proxies in front of the app (1 for a single Caddy/nginx), otherwise the sender-address check sees the proxy, not PayFast.
-4. Make a sandbox subscription end to end: pay, see the status change to Active in the admin (it may take a minute), receive both e-mails.
+4. The portal sign-in e-mails need working SMTP. Test: subscribe in the sandbox, open `/portal/`, request a link, sign in.
+5. Pause, period change, cancel and refund use PayFast's REST API with your merchant id and passphrase. Try each once in the sandbox before going live; the request formats follow PayFast's documentation but have not been exercised against PayFast from the build environment.
+6. Make a sandbox subscription end to end: pay, see the status change to Active in the admin (it may take a minute), receive both e-mails.
 
 ## Scheduled jobs
 Monthly: `docker compose exec web python manage.py purge_old_leads`.

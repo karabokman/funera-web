@@ -7,7 +7,7 @@
     <p><span class="font-semibold">{{ subscription.customer.business_name }}</span><br><span class="text-slate-600">{{ subscription.plan.name }} plan · reference {{ subscription.reference }}</span></p>
     <dl class="divide-y divide-line text-sm">
       <div class="flex justify-between py-3"><dt>Due today</dt><dd class="font-bold">R{{ subscription.initial_amount|floatformat:"2g" }}</dd></div>
-      <div class="flex justify-between py-3"><dt>Then every month</dt><dd class="font-semibold">R{{ subscription.recurring_amount|floatformat:"2g" }}</dd></div>
+      <div class="flex justify-between py-3"><dt>Then every {% if subscription.billing_period == 'annual' %}year{% else %}month{% endif %}</dt><dd class="font-semibold">R{{ subscription.recurring_amount|floatformat:"2g" }}</dd></div>
     </dl>
     <form method="post" action="{{ checkout.url }}">
       {% for key, value in checkout.fields %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endfor %}

@@ -33,6 +33,15 @@ class SubscribeView(FormView):
             return redirect(f"{reverse('leads:contact')}?plan={self.plan.code}")
         return super().dispatch(request, *args, **kwargs)
 
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["plan"] = self.plan  # lets the form offer annual billing only when the plan has an annual price
+        return kwargs
+
+    def get_initial(self):
+        wants_annual = self.request.GET.get("period") == "annual" and self.plan.has_annual
+        return {"billing_period": "annual" if wants_annual else "monthly"}
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context.update(
@@ -40,7 +49,29 @@ class SubscribeView(FormView):
             page_title=f"Subscribe to {self.plan.name}",
             terms_version=settings.SUBSCRIPTION_TERMS_VERSION,
         )
-        context["first_payment"] = self.plan.monthly_price + (self.plan.setup_fee or 0)
+        setup = self.plan.setup_fee or 0
+        options = [
+            {
+                "value": "monthly",
+                "label": "Monthly",
+                "price": self.plan.monthly_price,
+                "unit": "month",
+                "due": self.plan.monthly_price + setup,
+            }
+        ]
+        if self.plan.has_annual:
+            options.append(
+                {
+                    "value": "annual",
+                    "label": "Annual",
+                    "price": self.plan.annual_price,
+                    "unit": "year",
+                    "due": self.plan.annual_price + setup,
+                    "saving": self.plan.annual_saving,
+                }
+            )
+        context["options"] = options
+        context["setup_fee"] = setup
         return context
 
     def form_valid(self, form):

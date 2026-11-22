@@ -1,0 +1,18 @@
+{% extends "billing/portal/base.html" %}
+{% block portal %}
+<p class="eyebrow">Client portal</p><h1 class="h-section mt-3">Your subscriptions</h1>
+<ul class="mt-8 space-y-4">
+  {% for s in subscriptions %}
+  <li class="card flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <p class="text-lg font-bold">{{ s.customer.business_name }} · {{ s.plan.name }}</p>
+      <p class="text-sm text-slate-600">R{{ s.recurring_amount|floatformat:"2g" }} {{ s.get_billing_period_display|lower }}{% if s.status == "active" and s.next_billing_date %} · next payment {{ s.next_billing_date|date:"j M Y" }}{% elif s.status == "paused" and s.paused_until %} · restarts about {{ s.paused_until|date:"j M Y" }}{% endif %}</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <span class="rounded-full px-3 py-1 text-xs font-semibold {% if s.status == 'active' %}bg-emerald-50 text-emerald-800{% elif s.status == 'cancelled' %}bg-slate-100 text-slate-600{% else %}bg-amber-50 text-amber-800{% endif %}">{{ s.get_status_display }}</span>
+      <a class="btn-outline btn-sm" href="{% url 'billing:portal_subscription' s.reference %}">Manage</a>
+    </div>
+  </li>
+  {% empty %}<li class="card text-slate-600">No subscriptions found for this e-mail address.</li>{% endfor %}
+</ul>
+{% endblock %}

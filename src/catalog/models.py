@@ -21,6 +21,13 @@ class Plan(models.Model):
         blank=True,
         help_text="Rand per month. Leave empty to show 'Get a quote'.",
     )
+    annual_price = models.DecimalField(
+        max_digits=9,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Rand per year when paid annually (e.g. ten months' price for a discount). Leave empty to offer monthly billing only.",
+    )
     setup_fee = models.DecimalField(
         max_digits=9,
         decimal_places=2,
@@ -42,6 +49,18 @@ class Plan(models.Model):
 
     def __str__(self) -> str:
         return self.name
+
+    @property
+    def has_annual(self) -> bool:
+        return self.annual_price is not None and self.annual_price > 0
+
+    @property
+    def annual_saving(self):
+        """Rand saved per year against twelve monthly payments (None when there is no saving to show)."""
+        if not (self.has_price and self.has_annual):
+            return None
+        saving = self.monthly_price * 12 - self.annual_price
+        return saving if saving > 0 else None
 
     @property
     def has_price(self) -> bool:

@@ -1,0 +1,9 @@
+Hello,
+
+Use this link to sign in to your {{ brand }} client portal:
+
+{{ link }}
+
+The link works once and expires in {{ minutes }} minutes. If you did not ask for it, you can ignore this e-mail; nobody can sign in without it.
+
+{{ brand }}

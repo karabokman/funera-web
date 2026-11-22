@@ -1,5 +1,8 @@
+from datetime import timedelta
+
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
 from billing.models import Customer, Subscription
 from catalog.models import Plan
@@ -129,3 +132,50 @@ class PricingButtonTests(TestCase):
     def test_no_subscribe_button_without_payfast(self):
         priced_plan()
         self.assertNotIn("Subscribe to", self.client.get(reverse("pages:pricing")).content.decode())
+
+
+class AnnualBillingTests(TestCase):
+    def setUp(self):
+        self.plan = priced_plan(annual="15000.00")
+        self.url = reverse("billing:subscribe", args=["starter"])
+
+    def test_pricing_shows_annual_price_and_saving(self):
+        html = self.client.get(reverse("pages:pricing")).content.decode().replace("\xa0", " ")
+        self.assertIn("/ year", html)
+        self.assertIn("save R3", html.replace(",", " ").replace("3 000", "3"))
+        self.assertIn("?period=annual", html)
+
+    def test_annual_option_hidden_when_plan_has_no_annual_price(self):
+        Plan.objects.filter(code="starter").update(annual_price=None)
+        self.assertNotContains(self.client.get(self.url), 'value="annual"')
+        self.client.post(self.url, {**FORM, "billing_period": "annual"})
+        self.assertFalse(Subscription.objects.exists())
+
+    def test_query_string_preselects_annual(self):
+        html = self.client.get(self.url, {"period": "annual"}).content.decode()
+        self.assertRegex(html, r'value="annual"\s+class="[^"]*"\s+checked|value="annual"[^>]*checked')
+
+    def test_annual_signup_amounts_and_checkout(self):
+        self.client.post(self.url, {**FORM, "billing_period": "annual"})
+        sub = Subscription.objects.get()
+        self.assertEqual(
+            (sub.billing_period, str(sub.initial_amount), str(sub.recurring_amount)), ("annual", "17500.00", "15000.00")
+        )
+        html = self.client.get(reverse("billing:pay", args=[sub.reference])).content.decode()
+        for needle in (
+            'name="frequency" value="6"',
+            'name="recurring_amount" value="15000.00"',
+            'name="amount" value="17500.00"',
+        ):
+            self.assertIn(needle, html)
+        year_later = (timezone.localdate().replace(year=timezone.localdate().year + 1, day=1)).year
+        self.assertRegex(html, rf'name="billing_date" value="{year_later}-')
+
+    def test_annual_first_notification_accepts_initial_and_sets_next_date_a_year_out(self):
+        from billing.tests.helpers import itn_pairs, post_itn
+
+        self.client.post(self.url, {**FORM, "billing_period": "annual"})
+        sub = Subscription.objects.get()
+        self.assertEqual(post_itn(self.client, itn_pairs(sub)).status_code, 200)
+        sub.refresh_from_db()
+        self.assertGreater(sub.next_billing_date, timezone.localdate() + timedelta(days=360))

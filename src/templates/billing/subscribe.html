@@ -7,25 +7,34 @@
       <p class="eyebrow">Subscribe</p>
       <h1 class="h-display mt-4 !text-4xl sm:!text-5xl">{{ plan.name }} plan</h1>
       <p class="lead mt-6">{{ plan.tagline }}</p>
-      <dl class="mt-8 divide-y divide-line rounded-2xl border border-line bg-white text-sm">
-        {% if plan.setup_fee %}<div class="flex justify-between p-4"><dt class="text-slate-600">Once-off set-up</dt><dd class="font-semibold">R{{ plan.setup_fee|floatformat:"2g" }}</dd></div>{% endif %}
-        <div class="flex justify-between p-4"><dt class="text-slate-600">Monthly subscription</dt><dd class="font-semibold">R{{ plan.monthly_price|floatformat:"2g" }}</dd></div>
-        <div class="flex justify-between p-4"><dt class="font-semibold">Due today</dt><dd class="font-bold">R{{ first_payment|floatformat:"2g" }}</dd></div>
-      </dl>
-      <p class="mt-4 text-sm text-slate-600">You pay securely on PayFast. After today, the monthly amount is collected automatically each month until you cancel. We do not see or store your card details.</p>
+      {% if setup_fee %}<p class="mt-8 rounded-2xl border border-line bg-white p-4 text-sm text-slate-700">A once-off set-up fee of <strong>R{{ setup_fee|floatformat:"2g" }}</strong> is added to your first payment.</p>{% endif %}
+      <p class="mt-4 text-sm text-slate-600">You pay securely on PayFast. After today, the subscription is collected automatically each period until you cancel. You can pause, switch between monthly and annual, or cancel any time from your portal. We do not see or store your card details.</p>
     </div>
     <div class="lg:col-span-3">
       <form method="post" class="card space-y-5 p-6 sm:p-8" novalidate>
         {% csrf_token %}
         {% for message in messages %}<p class="rounded-xl bg-red-50 p-4 text-sm font-medium text-red-800" role="alert">{{ message }}</p>{% endfor %}
         <div class="grid gap-5 sm:grid-cols-2">
-          {% for field in form.visible_fields %}{% if field.name != "accept" %}
+          {% for field in form.visible_fields %}{% if field.name != "accept" and field.name != "billing_period" %}
           <div class="{% if field.name == 'business_name' %}sm:col-span-2{% endif %}">
             <label class="label" for="{{ field.id_for_label }}">{{ field.label }} <span class="text-red-700" aria-hidden="true">*</span></label>
             {{ field }}
             {% for error in field.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
           </div>{% endif %}{% endfor %}
         </div>
+        <fieldset>
+          <legend class="label">Billing</legend>
+          <div class="grid gap-3 sm:grid-cols-2">
+            {% for o in options %}
+            <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-line bg-white p-4 has-[:checked]:border-brand has-[:checked]:ring-2 has-[:checked]:ring-brand/30">
+              <input type="radio" name="billing_period" value="{{ o.value }}" class="mt-1 h-5 w-5 text-brand" {% if form.billing_period.value == o.value %}checked{% endif %}>
+              <span class="text-sm"><span class="block font-semibold text-ink">{{ o.label }} · R{{ o.price|floatformat:"2g" }} / {{ o.unit }}</span>
+                {% if o.saving %}<span class="block text-brand-dark">Save R{{ o.saving|floatformat:"0g" }} a year</span>{% endif %}
+                <span class="block text-slate-600">Due today: R{{ o.due|floatformat:"2g" }}</span></span>
+            </label>{% endfor %}
+          </div>
+          {% for error in form.billing_period.errors %}<p class="field-error">Choose a billing period.</p>{% endfor %}
+        </fieldset>
         <div>
           <label class="flex items-start gap-3 text-sm text-slate-700"><input type="checkbox" name="accept" id="{{ form.accept.id_for_label }}" class="mt-1 h-5 w-5 rounded border-line text-brand" {% if form.accept.value %}checked{% endif %} required>
             <span>I agree to the <a class="font-medium text-brand-dark underline" href="{% url 'pages:subscription_terms' %}" target="_blank" rel="noopener">subscription terms</a> (version {{ terms_version }}) and the <a class="font-medium text-brand-dark underline" href="{% url 'pages:privacy' %}" target="_blank" rel="noopener">privacy notice</a>.</span></label>

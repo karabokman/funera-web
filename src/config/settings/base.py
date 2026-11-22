@@ -97,8 +97,8 @@ STORAGES = {
 # --- Business details shown on the site and in e-mails ------------------------------------------------
 BRAND_NAME = "Funera"
 BRAND_SLOGAN = "Manage with care. Operate with confidence."
-COMPANY_LEGAL_NAME = env("COMPANY_LEGAL_NAME", default="Funera")
-CONTACT_EMAIL = env("CONTACT_EMAIL", default="hello@example.com")  # shown on the site: set your real address
+COMPANY_LEGAL_NAME = env("COMPANY_LEGAL_NAME", default="Agencode Technologies")
+CONTACT_EMAIL = env("CONTACT_EMAIL", default="hello@funera.co.za")  # shown on the site: set your real address
 CONTACT_PHONE = env("CONTACT_PHONE", default="")
 INFORMATION_OFFICER_EMAIL = env("INFORMATION_OFFICER_EMAIL", default="")  # POPIA: shown in the privacy notice
 SALES_NOTIFY_EMAILS = env.list("SALES_NOTIFY_EMAILS", default=[])  # who is told about each new enquiry
@@ -115,7 +115,7 @@ EMAIL_PORT = env.int("EMAIL_PORT", default=587)
 EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
 EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="Funera <no-reply@example.com>")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="Funera <no-reply@funera.co.za>")
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
 
 LOGGING = {
@@ -143,3 +143,12 @@ PAYFAST_ALLOWED_NETWORKS = env.list(
 # Reverse proxies in front of the app (the proxy adds the real client address to X-Forwarded-For).
 BILLING_TRUSTED_PROXIES = env.int("BILLING_TRUSTED_PROXIES", default=1)
 SUBSCRIPTION_TERMS_VERSION = "1.0"
+
+# --- Client portal, pausing and refunds -----------------------------------------------
+PORTAL_LOGIN_MINUTES = env.int("PORTAL_LOGIN_MINUTES", default=20)  # how long an e-mailed sign-in link works
+PORTAL_SESSION_HOURS = env.int("PORTAL_SESSION_HOURS", default=2)
+PORTAL_LOGIN_RATE_PER_HOUR = env.int("PORTAL_LOGIN_RATE_PER_HOUR", default=5)  # per visitor
+PAUSE_MAX_CYCLES = env.int("PAUSE_MAX_CYCLES", default=3)  # most billing periods a client may skip in one pause
+REFUND_WINDOW_DAYS = env.int(
+    "REFUND_WINDOW_DAYS", default=7
+)  # how long after a payment a client may request a refund (your policy)

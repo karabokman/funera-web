@@ -2,6 +2,8 @@
 
 Items that need a human decision before launch:
 
+- **Annual prices**: set *annual price* on a plan to offer annual billing (for example ten times the monthly price). Empty = monthly only.
+- **Refund and pause policy**: `REFUND_WINDOW_DAYS` (default 7) and `PAUSE_MAX_CYCLES` (default 3) are business decisions. Update the cancellation and refund wording in the subscription terms to match.
 - **Prices**: Plans > price fields in the admin. Empty = "Get a quote".
 - **Contact details**: `CONTACT_EMAIL`, `CONTACT_PHONE`, `INFORMATION_OFFICER_EMAIL`, `COMPANY_LEGAL_NAME` (placeholders by default).
 - **Subscription terms** (`templates/pages/subscription_terms.html`) are a short draft; have them reviewed together with your customer agreement. Bump `SUBSCRIPTION_TERMS_VERSION` when they change.

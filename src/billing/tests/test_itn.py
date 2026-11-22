@@ -219,3 +219,77 @@ class AdminTests(TestCase):
         self.assertEqual(
             self.client.get(reverse("admin:billing_customer_delete", args=[self.sub.customer.pk])).status_code, 403
         )
+
+
+class RefundAdminTests(TestCase):
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+
+        from billing import refunds
+        from billing.models import Payment
+
+        self.client.force_login(get_user_model().objects.create_superuser("boss2", "b2@example.com", "pw-12345-long"))
+        self.sub = make_subscription(status=Subscription.Status.ACTIVE)
+        self.payment = Payment.objects.create(
+            subscription=self.sub, pf_payment_id="55", status="COMPLETE", amount_gross=4000
+        )
+        self.refund = refunds.request_refund(self.payment, "test")
+
+    def act(self, action):
+        from django.urls import reverse
+
+        return self.client.post(
+            reverse("admin:billing_refund_changelist"),
+            {"action": action, "_selected_action": [self.refund.pk]},
+            follow=True,
+        )
+
+    def test_process_action_refunds_via_payfast(self):
+        with mock.patch("billing.payfast.refund_payment") as api:
+            response = self.act("process_refunds")
+        api.assert_called_once()
+        self.assertContains(response, "refunded")
+        self.refund.refresh_from_db()
+        self.assertEqual(self.refund.status, "processed")
+
+    def test_process_failure_is_shown_and_marks_failed(self):
+        with mock.patch("billing.payfast.refund_payment", side_effect=payfast.GatewayUnavailable("declined")):
+            response = self.act("process_refunds")
+        self.assertContains(response, "not done")
+        self.refund.refresh_from_db()
+        self.assertEqual(self.refund.status, "failed")
+
+    def test_decline_action(self):
+        self.act("decline_refunds")
+        self.refund.refresh_from_db()
+        self.assertEqual(self.refund.status, "declined")
+
+    def test_refunds_cannot_be_deleted_in_admin(self):
+        from django.urls import reverse
+
+        self.assertEqual(
+            self.client.get(reverse("admin:billing_refund_delete", args=[self.refund.pk])).status_code, 403
+        )
+
+
+class SubscriptionAdminLifecycleTests(TestCase):
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+
+        from .helpers import live_subscription
+
+        self.client.force_login(get_user_model().objects.create_superuser("boss3", "b3@example.com", "pw-12345-long"))
+        self.sub = live_subscription()
+
+    def test_staff_pause_and_resume_actions_record_staff_as_actor(self):
+        from django.urls import reverse
+
+        url = reverse("admin:billing_subscription_changelist")
+        with mock.patch("billing.payfast.pause_subscription"), mock.patch("billing.payfast.unpause_subscription"):
+            self.client.post(url, {"action": "pause_subscriptions", "_selected_action": [self.sub.pk]})
+            self.sub.refresh_from_db()
+            self.assertEqual(self.sub.status, "paused")
+            self.client.post(url, {"action": "resume_subscriptions", "_selected_action": [self.sub.pk]})
+        self.sub.refresh_from_db()
+        self.assertEqual(self.sub.status, "active")
+        self.assertEqual({e.actor for e in self.sub.events.all()}, {"staff"})

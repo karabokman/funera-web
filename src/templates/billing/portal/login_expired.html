@@ -1,0 +1,6 @@
+{% extends "billing/portal/base.html" %}
+{% block portal %}
+<p class="eyebrow">Link expired</p><h1 class="h-section mt-3">That sign-in link no longer works</h1>
+<p class="lead mt-4 max-w-xl">Sign-in links work once and expire quickly, for your safety.</p>
+<a class="btn-primary mt-8" href="{% url 'billing:portal_login' %}">Get a new link</a>
+{% endblock %}

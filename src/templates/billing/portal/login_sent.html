@@ -1,0 +1,5 @@
+{% extends "billing/portal/base.html" %}
+{% block portal %}
+<p class="eyebrow">Check your e-mail</p><h1 class="h-section mt-3">Sign-in link on its way</h1>
+<p class="lead mt-4 max-w-xl">If that address has a subscription with us, a sign-in link is on its way. It works once and expires in {{ site.portal_minutes }} minutes. Nothing arrived? Check your spam folder, or e-mail <a class="underline" href="mailto:{{ site.email }}">{{ site.email }}</a>.</p>
+{% endblock %}

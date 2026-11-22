@@ -1,0 +1,5 @@
+{% extends "billing/portal/base.html" %}
+{% block portal %}
+<p class="eyebrow">Client portal</p><h1 class="h-section mt-3">Sign in to {{ site.name }}</h1>
+<form method="post" class="card mt-8 max-w-xl">{% csrf_token %}<p class="mb-5 text-slate-700">Press the button to finish signing in on this device.</p><button type="submit" class="btn-primary btn-lg w-full">Sign in</button></form>
+{% endblock %}

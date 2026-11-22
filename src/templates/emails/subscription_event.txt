@@ -1,0 +1,9 @@
+{{ headline }}
+
+Business: {{ customer.business_name }}
+Contact:  {{ customer.name }}, {{ customer.email }}, {{ customer.phone }}
+Plan:     {{ subscription.plan.name }} ({{ subscription.get_billing_period_display }}, R{{ subscription.recurring_amount }})
+Status:   {{ subscription.get_status_display }}
+Reference: {{ subscription.reference }}
+
+Admin: {{ site_url }}/{{ admin_url }}billing/subscription/

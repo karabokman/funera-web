@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block robots %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+{% block content %}
+<section class="section"><div class="container-page max-w-4xl">
+  {% if email %}
+  <div class="mb-8 flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4 text-sm">
+    <p class="text-slate-600">Signed in as <span class="font-semibold text-ink">{{ email }}</span></p>
+    <form method="post" action="{% url 'billing:portal_logout' %}">{% csrf_token %}<button type="submit" class="btn-outline btn-sm">Sign out</button></form>
+  </div>
+  {% endif %}
+  {% for message in messages %}<p class="mb-4 rounded-xl p-4 text-sm font-medium {% if message.tags == 'error' %}bg-red-50 text-red-800{% else %}bg-emerald-50 text-emerald-900{% endif %}" role="{% if message.tags == 'error' %}alert{% else %}status{% endif %}">{{ message }}</p>{% endfor %}
+  {% block portal %}{% endblock %}
+</div></section>
+{% endblock %}

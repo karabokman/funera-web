@@ -1,0 +1,10 @@
+{% extends "billing/portal/base.html" %}
+{% block portal %}
+<p><a class="text-sm font-semibold text-brand-dark underline" href="{% url 'billing:portal_subscription' payment.subscription.reference %}">&larr; Back</a></p>
+<h1 class="h-section mt-3">Request a refund</h1>
+<p class="lead mt-4">Payment of R{{ payment.amount_gross|floatformat:"2g" }} on {{ payment.received_at|date:"j M Y" }}. Up to R{{ refundable|floatformat:"2g" }} can be refunded to the card you paid with. We review each request and reply by e-mail.</p>
+<form method="post" class="card mt-8 max-w-xl space-y-5" novalidate>{% csrf_token %}
+  <div><label class="label" for="{{ form.reason.id_for_label }}">{{ form.reason.label }}</label>{{ form.reason }}{% for e in form.reason.errors %}<p class="field-error">{{ e }}</p>{% endfor %}</div>
+  <button type="submit" class="btn-primary btn-lg w-full">Send request</button>
+</form>
+{% endblock %}
