@@ -22,8 +22,8 @@ jobs:
         run: python src/manage.py check --deploy --fail-level WARNING --settings=config.settings.production
         env:
           SECRET_KEY: ci-only-secret-key-that-is-long-enough-and-random-0123456789
-          ALLOWED_HOSTS: funera.example.com
-          SITE_URL: https://funera.example.com
+          ALLOWED_HOSTS: funera.co.za
+          SITE_URL: https://funera.co.za
       - name: Tests
         working-directory: src
         run: |

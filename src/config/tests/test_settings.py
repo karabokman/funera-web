@@ -8,8 +8,8 @@ from django.test import SimpleTestCase
 
 GOOD = {
     "SECRET_KEY": "a-very-long-random-secret-key-for-tests-0123456789abcdef",
-    "ALLOWED_HOSTS": "funera.example.com",
-    "SITE_URL": "https://funera.example.com",
+    "ALLOWED_HOSTS": "funera.co.za",
+    "SITE_URL": "https://funera.co.za",
 }
 
 
@@ -46,7 +46,7 @@ class ProductionGuardTests(SimpleTestCase):
 
     def test_http_site_url_refused(self):
         with self.assertRaises(ImproperlyConfigured):
-            load_production(**{**GOOD, "SITE_URL": "http://funera.example.com"})
+            load_production(**{**GOOD, "SITE_URL": "http://funera.co.za"})
 
 
 class PayFastProductionGuardTests(SimpleTestCase):
