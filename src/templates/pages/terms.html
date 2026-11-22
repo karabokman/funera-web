@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="section"><div class="container-page">
+  <p class="eyebrow">Legal</p><h1 class="h-section mt-3">Website terms</h1>
+  <div class="prose-page mt-6">
+    <p>By using this website you agree to these terms. They cover the website only. The Funera platform itself is supplied under a separate customer agreement.</p>
+    <h2>Information on this website</h2><p>We work to keep the website accurate, but descriptions of features and plans are for general information and may change. Your agreement with us states what you receive and what it costs.</p>
+    <h2>Acceptable use</h2><p>Please do not misuse the website: no automated scraping that harms performance, no attempts to break its security and no submitting false or abusive enquiries.</p>
+    <h2>Intellectual property</h2><p>The {{ site.name }} name, logo, text and design belong to {{ site.legal_name }}. You may not copy them without our written permission.</p>
+    <h2>Liability</h2><p>To the extent the law allows, we are not liable for loss arising from your use of this website. Nothing here limits rights you have under South African consumer law.</p>
+    <h2>Governing law</h2><p>These terms are governed by the laws of the Republic of South Africa.</p>
+    <h2>Contact</h2><p><a href="mailto:{{ site.email }}">{{ site.email }}</a></p>
+  </div>
+</div></section>
+{% endblock %}

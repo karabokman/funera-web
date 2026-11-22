@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block robots %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<section class="section"><div class="container-page max-w-2xl">
+  <p class="eyebrow">Payment cancelled</p><h1 class="h-section mt-3">No payment was taken</h1>
+  <p class="lead mt-4">You left PayFast before paying. Nothing was charged.</p>
+  <div class="mt-8 flex flex-wrap gap-3">
+    {% if subscription.can_pay %}<a class="btn-primary" href="{% url 'billing:pay' subscription.reference %}">Try again</a>{% endif %}
+    <a class="btn-outline" href="{% url 'leads:contact' %}">Talk to us instead</a>
+  </div>
+</div></section>
+{% endblock %}

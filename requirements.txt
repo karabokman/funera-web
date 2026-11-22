@@ -1,0 +1,8 @@
+# Runtime dependencies. Each may receive bug-fix and minor updates inside the same major line; bump deliberately after the tests pass.
+# Requires Python 3.12 or newer (Django 6.1).
+Django>=6.1.3,<6.2
+django-environ>=0.14,<0.15
+whitenoise>=6.12,<7
+django-axes>=9.0,<10        # locks out repeated bad admin logins
+psycopg[binary]>=3.3.8,<4
+gunicorn>=26.2,<27

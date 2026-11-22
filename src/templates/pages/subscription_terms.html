@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="section"><div class="container-page">
+  <p class="eyebrow">Legal</p><h1 class="h-section mt-3">Subscription terms</h1>
+  <div class="prose-page mt-6">
+    <p>These terms apply when you subscribe to the {{ site.name }} platform online. They are a summary and sit alongside the customer agreement you receive when your platform is set up.</p>
+    <h2>Payment</h2><p>You pay the first amount shown when you subscribe, which may include a once-off set-up fee. After that the monthly amount is collected automatically through PayFast until the subscription is cancelled. Prices are in South African rand.</p>
+    <h2>Cancelling</h2><p>You may cancel at any time by e-mailing {{ site.email }}. Cancellation stops future collections; amounts already paid for a month in progress are not refunded unless the law requires it.</p>
+    <h2>Failed payments</h2><p>If a monthly collection fails we will tell you and may suspend your platform until the amount is paid.</p>
+    <h2>Your data</h2><p>The members and records you keep on your platform are yours. We process them only to run the platform for you. See the <a href="{% url 'pages:privacy' %}">privacy notice</a>.</p>
+    <h2>Governing law</h2><p>These terms are governed by the laws of the Republic of South Africa.</p>
+  </div>
+</div></section>
+{% endblock %}

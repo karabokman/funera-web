@@ -1,0 +1,8 @@
+Hello {{ lead.name }},
+
+Thank you for asking about {{ brand }} for {{ lead.business_name }}. We have your details and will contact you on {{ lead.phone }} or by e-mail, normally within one working day.
+
+Manage with care. Operate with confidence.
+The {{ brand }} team
+
+You received this because you asked us to contact you on {{ site_url }}. We use your details only for that and keep them as set out in our privacy notice: {{ site_url }}/privacy/

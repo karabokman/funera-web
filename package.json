@@ -1,0 +1,14 @@
+{
+  "name": "funera-website",
+  "private": true,
+  "scripts": {
+    "css:build": "tailwindcss -i ./src/static/src/input.css -o ./src/static/css/app.css --minify",
+    "css:watch": "tailwindcss -i ./src/static/src/input.css -o ./src/static/css/app.css --watch",
+    "fonts:copy": "mkdir -p src/static/fonts && cp node_modules/@fontsource-variable/montserrat/files/montserrat-latin-wght-normal.woff2 node_modules/@fontsource-variable/montserrat/files/montserrat-latin-ext-wght-normal.woff2 src/static/fonts/"
+  },
+  "devDependencies": {
+    "@fontsource-variable/montserrat": "^5.2.8",
+    "@tailwindcss/cli": "^4.3.5",
+    "tailwindcss": "^4.3.5"
+  }
+}

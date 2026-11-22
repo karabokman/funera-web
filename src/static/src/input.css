@@ -1,0 +1,67 @@
+@import "tailwindcss";
+@source "../../templates";
+
+/* Self-hosted Montserrat (the typeface of the Funera logo): no third-party font requests. */
+@font-face {
+  font-family: "Montserrat Variable"; font-style: normal; font-display: swap; font-weight: 100 900;
+  src: url("../fonts/montserrat-latin-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Montserrat Variable"; font-style: normal; font-display: swap; font-weight: 100 900;
+  src: url("../fonts/montserrat-latin-ext-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@theme {
+  --font-sans: "Montserrat Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* Palette sampled from the logo: charcoal wordmark, slate-blue mark. */
+  --color-ink: #2b2e34;
+  --color-brand: #536674;
+  --color-brand-dark: #3d4f5c;
+  --color-brand-soft: #eaeff3;
+  --color-line: #dde3e8;
+  --color-paper: #f6f8f9;
+  --color-deep: #16212a;
+}
+
+@layer base {
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body { @apply bg-white font-sans text-ink antialiased; }
+  :focus-visible { @apply outline-2 outline-offset-2 outline-brand; }
+  summary::-webkit-details-marker { display: none; }
+}
+
+@utility btn { @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2; }
+@utility btn-primary { @apply btn bg-brand text-white shadow-sm hover:bg-brand-dark; }
+@utility btn-outline { @apply btn border border-line bg-white text-ink hover:border-brand hover:text-brand-dark; }
+@utility btn-light { @apply btn bg-white text-deep hover:bg-brand-soft; }
+@utility btn-lg { @apply px-7 py-3.5 text-base; }
+@utility btn-ghost-light { @apply btn border border-white/30 text-white hover:bg-white/10; }
+
+@layer components {
+  .container-page { @apply mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8; }
+  .section { @apply py-16 sm:py-20 lg:py-24; }
+  .eyebrow { @apply text-xs font-semibold uppercase tracking-[0.18em] text-brand; }
+  .h-display { @apply text-4xl font-bold leading-[1.1] tracking-tight text-ink sm:text-5xl lg:text-6xl; }
+  .h-section { @apply text-3xl font-bold tracking-tight text-ink sm:text-4xl; }
+  .lead { @apply text-lg leading-relaxed text-slate-600; }
+
+
+  .card { @apply rounded-2xl border border-line bg-white p-6 shadow-sm; }
+  .icon-tile { @apply flex h-11 w-11 items-center justify-center rounded-xl bg-brand-soft text-brand; }
+
+  .label { @apply mb-1.5 block text-sm font-semibold text-ink; }
+  .field { @apply block w-full rounded-xl border border-line bg-white px-4 py-3 text-base text-ink shadow-sm placeholder:text-slate-400 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30; }
+  .field-error { @apply mt-1.5 text-sm font-medium text-red-700; }
+
+  .nav-link { @apply rounded-lg px-3 py-2 text-sm font-semibold text-slate-600 transition hover:text-brand-dark; }
+  .nav-link[aria-current="page"] { @apply text-brand-dark; }
+
+  .prose-page { @apply max-w-3xl text-base leading-relaxed text-slate-700; }
+  .prose-page h2 { @apply mt-10 text-xl font-bold text-ink; }
+  .prose-page p { @apply mt-3; }
+  .prose-page ul { @apply mt-3 list-disc space-y-1 pl-6; }
+  .prose-page a { @apply font-medium text-brand-dark underline underline-offset-2; }
+}

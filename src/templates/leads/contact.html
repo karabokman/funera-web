@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block robots %}{% endblock %}
+{% block content %}
+<section class="bg-gradient-to-b from-paper to-white">
+  <div class="container-page grid gap-12 py-14 sm:py-20 lg:grid-cols-5">
+    <div class="lg:col-span-2">
+      <p class="eyebrow">Book a demo</p><h1 class="h-display mt-4 !text-4xl sm:!text-5xl">Let's talk about your parlour</h1>
+      <p class="lead mt-6">Tell us a little about your scheme. We will contact you within one working day to arrange a short demo using your own cover plans.</p>
+      <ul class="mt-8 space-y-4 text-slate-700">
+        <li class="flex gap-3">{% include "components/icon.html" with name="clock" class="h-6 w-6 shrink-0 text-brand" %}<span>A short walk-through, no obligation.</span></li>
+        <li class="flex gap-3">{% include "components/icon.html" with name="server" class="h-6 w-6 shrink-0 text-brand" %}<span>We set up and host your platform. Nothing to install.</span></li>
+        <li class="flex gap-3">{% include "components/icon.html" with name="shield" class="h-6 w-6 shrink-0 text-brand" %}<span>Your details are used only to answer you. <a class="font-medium text-brand-dark underline" href="{% url 'pages:privacy' %}">Privacy notice</a>.</span></li>
+      </ul>
+      <p class="mt-8 text-sm text-slate-600">Prefer to write? <a class="font-semibold text-brand-dark underline" href="mailto:{{ site.email }}">{{ site.email }}</a>{% if site.phone %} · <a class="font-semibold text-brand-dark underline" href="tel:{{ site.phone }}">{{ site.phone }}</a>{% endif %}</p>
+    </div>
+    <div class="lg:col-span-3">
+      <form method="post" class="card space-y-5 p-6 sm:p-8" data-lead-form novalidate>
+        {% csrf_token %}
+        {% if messages %}{% for message in messages %}<p class="rounded-xl bg-red-50 p-4 text-sm font-medium text-red-800" role="alert">{{ message }}</p>{% endfor %}{% endif %}
+        {% if form.non_field_errors %}<div class="rounded-xl bg-red-50 p-4 text-sm font-medium text-red-800" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+        <div class="grid gap-5 sm:grid-cols-2">
+          {% for field in form.visible_fields %}
+            {% if field.name == "website" or field.name == "consent_given" %}{% else %}
+            <div class="{% if field.name == 'message' or field.name == 'business_name' %}sm:col-span-2{% endif %}">
+              <label class="label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="text-red-700" aria-hidden="true">*</span>{% endif %}</label>
+              {{ field }}
+              {% for error in field.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+            </div>{% endif %}
+          {% endfor %}
+        </div>
+        {# Honeypot: invisible to people, tempting to bots. #}
+        <div class="absolute -left-[9999px] h-0 w-0 overflow-hidden" aria-hidden="true"><label for="{{ form.website.id_for_label }}">Leave this empty</label>{{ form.website }}</div>
+        {{ form.started }}
+        <input type="hidden" name="source" value="{{ request.META.HTTP_REFERER|default:''|truncatechars:200 }}">
+        {% for key, value in utm.items %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endfor %}
+        <div>
+          <label class="flex items-start gap-3 text-sm text-slate-700"><input type="checkbox" name="consent_given" id="{{ form.consent_given.id_for_label }}" class="mt-1 h-5 w-5 rounded border-line text-brand" {% if form.consent_given.value %}checked{% endif %} required>
+            <span>I agree that {{ site.name }} may contact me about my enquiry, as set out in the <a class="font-medium text-brand-dark underline" href="{% url 'pages:privacy' %}" target="_blank" rel="noopener">privacy notice</a>.</span></label>
+          {% for error in form.consent_given.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+        </div>
+        <button type="submit" class="btn-primary btn-lg w-full">Request my demo</button>
+      </form>
+    </div>
+  </div>
+</section>
+{% endblock %}

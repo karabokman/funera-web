@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="bg-gradient-to-b from-paper to-white">
+  <div class="container-page py-14 sm:py-20"><p class="eyebrow">Security and POPIA</p><h1 class="h-display mt-4 max-w-3xl">Handle families' information with the care it deserves</h1>
+    <p class="lead mt-6 max-w-2xl">Funeral schemes hold identity numbers, family details and health-related claim documents. Funera is designed around that responsibility.</p></div>
+</section>
+<section class="section"><div class="container-page grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+  {% for title, text in trust %}<article class="card"><div class="icon-tile">{% include "components/icon.html" with name="lock" %}</div><h2 class="mt-5 text-lg font-bold">{{ title }}</h2><p class="mt-2 text-slate-600">{{ text }}</p></article>{% endfor %}
+</div></section>
+<section class="bg-paper section"><div class="container-page max-w-3xl">
+  <h2 class="h-section">POPIA tools included in the Professional plan</h2>
+  <ul class="mt-6 space-y-3 text-slate-700">
+    <li><strong>Information Officer details</strong> and a privacy notice that shows them, with version and review dates.</li>
+    <li><strong>Consent records</strong> for the privacy notice, parent or guardian consent for children, and marketing choices.</li>
+    <li><strong>Data requests</strong>: access, correction, deletion and objection, with an answer-by date and identity check.</li>
+    <li><strong>Retention clean-up</strong> that removes personal details once the retention period has passed.</li>
+    <li><strong>Incident register</strong> to record security incidents and the decision on notifying the Information Regulator.</li>
+    <li><strong>Policy-rule timers</strong> for cooling-off cancellations and claim decisions and representations.</li>
+  </ul>
+  <p class="mt-8 rounded-xl border border-line bg-white p-5 text-sm leading-relaxed text-slate-600">Funera gives your team the tools to meet your obligations. It does not replace legal advice. Which rules apply to your business, and the exact periods to use, are for your compliance adviser to confirm.</p>
+</div></section>
+{% include "components/cta.html" %}
+{% endblock %}

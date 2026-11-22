@@ -1,0 +1,8 @@
+Hello {{ customer.name }},
+
+Thank you for subscribing to {{ brand }}. Your payment for the {{ subscription.plan.name }} plan ({{ subscription.reference }}) was received.
+
+Next we set up your platform and send you the address and your first sign-in link. If you have questions, just reply to this e-mail.
+
+{{ brand }}
+{{ site_url }}

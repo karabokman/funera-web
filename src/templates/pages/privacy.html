@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="section"><div class="container-page">
+  <p class="eyebrow">Legal</p><h1 class="h-section mt-3">Privacy notice</h1>
+  <p class="mt-2 text-sm text-slate-500">Version {{ site.notice_version }}</p>
+  <div class="prose-page mt-6">
+    <p>This notice explains how {{ site.legal_name }} ("{{ site.name }}", "we") handles personal information collected through this website, in line with the Protection of Personal Information Act, 2013 (POPIA).</p>
+    <h2>Who is responsible</h2>
+    <p>{{ site.legal_name }} is the responsible party. Questions or requests: <a href="mailto:{% if site.io_email %}{{ site.io_email }}{% else %}{{ site.email }}{% endif %}">{% if site.io_email %}{{ site.io_email }}{% else %}{{ site.email }}{% endif %}</a>.</p>
+    <h2>What we collect and why</h2>
+    <ul>
+      <li><strong>Enquiry form:</strong> your name, business name, email address, phone number, the size of your scheme, the plan you are interested in and any message you write. We use it only to answer your enquiry, arrange a demo and follow up on it.</li>
+      <li><strong>Consent record:</strong> we record that you agreed, when, and which version of this notice applied.</li>
+      <li><strong>Abuse protection:</strong> a keyed (one-way) hash of your IP address, used only to limit repeated form submissions. We do not store your IP address in the enquiry.</li>
+      <li><strong>Where you came from:</strong> the page or campaign link that brought you to the form, to understand which marketing works.</li>
+    </ul>
+    <h2>Cookies and analytics</h2>
+    <p>This website sets no tracking cookies.{% if site.plausible_domain %} We use Plausible Analytics, a cookie-free service that counts visits without identifying individuals.{% endif %}</p>
+    <h2>Who sees your information</h2>
+    <p>Our staff who handle enquiries, and the service providers that host the website and send email for us. We do not sell your information.</p>
+    <h2>How long we keep it</h2>
+    <p>Enquiries are deleted after {{ site.retention_months }} months unless you become a customer, in which case your details are kept as set out in our customer agreement.</p>
+    <h2>Your rights</h2>
+    <p>You may ask us to show you, correct or delete your information, or to stop contacting you. Write to the address above. You may also complain to the Information Regulator (South Africa) at <a href="https://inforegulator.org.za" rel="noopener">inforegulator.org.za</a>.</p>
+  </div>
+</div></section>
+{% endblock %}

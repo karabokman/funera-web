@@ -1,0 +1,10 @@
+New subscription
+
+Business: {{ customer.business_name }}
+Contact:  {{ customer.name }}, {{ customer.email }}, {{ customer.phone }}
+Plan:     {{ subscription.plan.name }} ({{ subscription.plan.code }})
+Charged:  R{{ subscription.initial_amount }} now, R{{ subscription.recurring_amount }} monthly
+Reference: {{ subscription.reference }}
+
+Next step: set up this client's platform.
+Admin: {{ site_url }}/{{ admin_url }}billing/subscription/

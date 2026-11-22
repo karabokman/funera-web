@@ -1,0 +1,33 @@
+{% load static %}<!doctype html>
+<html lang="en-ZA" class="scroll-pt-20">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{% if page_title %}{{ page_title }} · {% endif %}{{ site.name }}: {{ site.slogan }}{% endblock %}</title>
+  <meta name="description" content="{% block meta_description %}{{ meta_description|default:'Funera is the platform for funeral parlours and funeral-cover schemes: applications, members, premiums, claims, communication and POPIA compliance in one place.' }}{% endblock %}">
+  <link rel="canonical" href="{{ site.canonical }}">
+  {% block robots %}{% endblock %}
+  <meta name="theme-color" content="#536674">
+  <meta property="og:site_name" content="{{ site.name }}">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="{% block og_title %}{{ page_title|default:site.slogan }} · {{ site.name }}{% endblock %}">
+  <meta property="og:description" content="{{ meta_description|default:site.slogan }}">
+  <meta property="og:url" content="{{ site.canonical }}">
+  <meta property="og:image" content="{{ site.og_image }}">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="{% static 'img/favicon.ico' %}" sizes="any">
+  <link rel="icon" type="image/png" href="{% static 'img/favicon-64.png' %}" sizes="64x64">
+  <link rel="apple-touch-icon" href="{% static 'img/apple-touch-icon.png' %}">
+  <link rel="preload" href="{% static 'fonts/montserrat-latin-wght-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  {% block head_extra %}{% endblock %}
+</head>
+<body class="flex min-h-screen flex-col">
+  <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:shadow-lg">Skip to content</a>
+  {% include "components/header.html" %}
+  <main id="main" class="flex-1">{% block content %}{% endblock %}</main>
+  {% include "components/footer.html" %}
+  <script src="{% static 'js/site.js' %}" defer></script>
+  {% if site.plausible_domain %}<script defer data-domain="{{ site.plausible_domain }}" src="{{ site.plausible_script }}"></script>{% endif %}
+</body>
+</html>

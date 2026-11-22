@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block robots %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<section class="section"><div class="container-page max-w-2xl">
+  {% if subscription.status == "active" %}
+    <p class="eyebrow">Subscription active</p><h1 class="h-section mt-3">Thank you, {{ subscription.customer.name }}</h1>
+    <p class="lead mt-4">Your payment is confirmed and your {{ subscription.plan.name }} plan is active. We have e-mailed you at {{ subscription.customer.email }}, and we will be in touch about setting up your platform.</p>
+  {% elif subscription.status == "pending" %}
+    <p class="eyebrow">Confirming</p><h1 class="h-section mt-3">We are confirming your payment</h1>
+    <p class="lead mt-4">PayFast is still telling us about your payment. This normally takes under a minute. Refresh this page shortly. If nothing changes, contact us at <a class="underline" href="mailto:{{ site.email }}">{{ site.email }}</a> and quote {{ subscription.reference }}.</p>
+  {% else %}
+    <p class="eyebrow">Subscription {{ subscription.get_status_display|lower }}</p><h1 class="h-section mt-3">Reference {{ subscription.reference }}</h1>
+    <p class="lead mt-4">Please contact us at <a class="underline" href="mailto:{{ site.email }}">{{ site.email }}</a> if you have questions.</p>
+  {% endif %}
+</div></section>
+{% endblock %}

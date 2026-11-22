@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block robots %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<section class="section"><div class="container-page max-w-2xl">
+  <p class="eyebrow">Step 2 of 2</p><h1 class="h-section mt-3">Confirm and pay</h1>
+  <div class="card mt-8 space-y-4">
+    <p><span class="font-semibold">{{ subscription.customer.business_name }}</span><br><span class="text-slate-600">{{ subscription.plan.name }} plan · reference {{ subscription.reference }}</span></p>
+    <dl class="divide-y divide-line text-sm">
+      <div class="flex justify-between py-3"><dt>Due today</dt><dd class="font-bold">R{{ subscription.initial_amount|floatformat:"2g" }}</dd></div>
+      <div class="flex justify-between py-3"><dt>Then every month</dt><dd class="font-semibold">R{{ subscription.recurring_amount|floatformat:"2g" }}</dd></div>
+    </dl>
+    <form method="post" action="{{ checkout.url }}">
+      {% for key, value in checkout.fields %}<input type="hidden" name="{{ key }}" value="{{ value }}">{% endfor %}
+      <button type="submit" class="btn-primary btn-lg w-full">Pay securely with PayFast</button>
+    </form>
+    <p class="text-xs text-slate-500">You will be taken to PayFast to pay by card or instant EFT. Your payment is confirmed by PayFast to us directly, which can take a minute.</p>
+  </div>
+</div></section>
+{% endblock %}

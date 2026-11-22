@@ -1,0 +1,13 @@
+New enquiry from the Funera website
+
+Business:   {{ lead.business_name }}
+Contact:    {{ lead.name }}
+Email:      {{ lead.email }}
+Phone:      {{ lead.phone }}
+Members:    {{ lead.get_member_count_display }}
+Plan:       {{ lead.plan_interest|default:"Not sure yet" }}
+Source:     {{ lead.source_page|default:"direct" }}{% if lead.utm_campaign %} / {{ lead.utm_campaign }}{% endif %}
+
+{{ lead.message|default:"(no message)" }}
+
+Open it in the admin: {{ site_url }}/{{ admin_url }}leads/lead/{{ lead.pk }}/change/

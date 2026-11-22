@@ -1,0 +1,11 @@
+{# Closing call to action. Usage: {% include "components/cta.html" %} #}
+<section class="bg-deep" aria-labelledby="cta-title">
+  <div class="container-page section text-center">
+    <h2 id="cta-title" class="mx-auto max-w-2xl text-3xl font-bold tracking-tight text-white sm:text-4xl">{{ site.slogan }}</h2>
+    <p class="mx-auto mt-4 max-w-xl text-lg text-slate-300">See how Funera would run your parlour. We will show you on a short call, with your own plans and your own questions.</p>
+    <div class="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+      <a class="btn-light btn-lg" href="{% url 'leads:contact' %}">Book a demo</a>
+      <a class="btn-ghost-light btn-lg" href="{% url 'pages:pricing' %}">See plans</a>
+    </div>
+  </div>
+</section>

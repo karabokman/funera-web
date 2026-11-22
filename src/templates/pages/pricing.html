@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block head_extra %}<script type="application/ld+json">{{ faq_ld|safe }}</script>{% endblock %}
+{% block content %}
+<section class="bg-gradient-to-b from-paper to-white">
+  <div class="container-page py-14 text-center sm:py-20"><p class="eyebrow">Plans and pricing</p><h1 class="h-display mx-auto mt-4 max-w-3xl">Pick the plan that fits your scheme today</h1>
+    <p class="lead mx-auto mt-6 max-w-2xl">Every plan includes members, premiums and claims. Higher plans include everything below them. Pricing is agreed with you, based on your size and what you need.</p></div>
+</section>
+<section class="container-page pb-16">
+  {% include "pages/_plan_cards.html" %}
+
+  <h2 class="h-section mt-20">Compare plans</h2>
+  <div class="mt-6 overflow-x-auto rounded-2xl border border-line">
+    <table class="w-full min-w-[40rem] text-left text-sm">
+      <caption class="sr-only">Features included in each plan</caption>
+      <thead class="bg-paper"><tr><th scope="col" class="px-5 py-4 font-semibold">Feature</th>{% for plan in plans %}<th scope="col" class="px-5 py-4 text-center font-semibold">{{ plan.name }}</th>{% endfor %}</tr></thead>
+      {% for section in sections %}
+      <tbody>
+        <tr><th scope="rowgroup" colspan="{{ plans|length|add:1 }}" class="bg-brand-soft px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-brand-dark">{{ section.label }}</th></tr>
+        {% for row in section.rows %}
+        <tr class="border-t border-line"><th scope="row" class="px-5 py-3 font-medium text-ink">{{ row.feature.name }}</th>
+          {% for yes in row.included %}<td class="px-5 py-3 text-center">{% if yes %}<span class="inline-flex text-brand" role="img" aria-label="Included">{% include "components/icon.html" with name="check" class="h-5 w-5" %}</span>{% else %}<span class="inline-flex text-slate-300" role="img" aria-label="Not included">{% include "components/icon.html" with name="minus" class="h-5 w-5" %}</span>{% endif %}</td>{% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+      {% endfor %}
+    </table>
+  </div>
+</section>
+<section class="bg-paper section"><div class="container-page max-w-3xl"><h2 class="h-section text-center">Pricing questions</h2>{% include "pages/_faq.html" %}</div></section>
+{% include "components/cta.html" %}
+{% endblock %}
