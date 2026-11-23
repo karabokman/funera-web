@@ -1,0 +1,9 @@
+Quotation accepted
+
+{{ quote.number }} · {{ quote.business_name }}
+Accepted by: {{ quote.decision_by }}
+Plan: {{ quote.plan.name }} ({{ quote.get_billing_period_display }})
+First payment: R{{ quote.first_payment_gross }}, then R{{ quote.recurring_gross }} each period
+Subscription: {{ subscription.reference }} (awaiting first payment)
+
+{{ staff_url }}quotes/{{ quote.pk }}/

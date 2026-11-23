@@ -1,0 +1,6 @@
+{% if page.paginator.num_pages > 1 %}
+<nav class="mt-4 flex items-center justify-between text-sm" aria-label="Pages">
+  {% if page.has_previous %}<a class="btn-outline btn-sm" href="?{% if status %}status={{ status }}&{% endif %}{% if q %}q={{ q|urlencode }}&{% endif %}page={{ page.previous_page_number }}">&larr; Previous</a>{% else %}<span></span>{% endif %}
+  <span class="text-slate-500">Page {{ page.number }} of {{ page.paginator.num_pages }} · {{ page.paginator.count }} in all</span>
+  {% if page.has_next %}<a class="btn-outline btn-sm" href="?{% if status %}status={{ status }}&{% endif %}{% if q %}q={{ q|urlencode }}&{% endif %}page={{ page.next_page_number }}">Next &rarr;</a>{% else %}<span></span>{% endif %}
+</nav>{% endif %}

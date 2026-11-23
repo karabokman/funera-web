@@ -29,10 +29,24 @@ class PublicPagesTests(TestCase):
         response = self.client.get(reverse("pages:healthz"))
         self.assertEqual(response.status_code, 200)
 
-    def test_robots_points_at_sitemap_and_hides_admin(self):
+    def test_robots_points_at_sitemap_and_does_not_reveal_private_addresses(self):
         body = self.client.get(reverse("pages:robots")).content.decode()
         self.assertIn("Sitemap: https://funera.test/sitemap.xml", body)
-        self.assertIn("Disallow: /admin/", body)
+        self.assertIn("Disallow: /portal/", body)
+        self.assertNotIn("/admin/", body)
+        self.assertNotIn("/staff/", body)
+
+    def test_no_public_page_links_to_the_staff_back_office_or_admin(self):
+        pages = [reverse(name) for name in ("pages:home", "pages:robots", "pages:sitemap")]
+        pages += ["/features/", "/pricing/", "/security/", "/contact/", "/privacy/", "/terms/"]
+        for path in pages:
+            response = self.client.get(path)
+            if response.status_code != 200:
+                continue
+            body = response.content.decode()
+            for secret in ("/staff/", "/admin/", "staff/login"):
+                with self.subTest(path=path, secret=secret):
+                    self.assertNotIn(secret, body)
 
     def test_sitemap_lists_public_pages_only(self):
         body = self.client.get(reverse("pages:sitemap")).content.decode()

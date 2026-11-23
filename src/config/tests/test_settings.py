@@ -10,6 +10,8 @@ GOOD = {
     "SECRET_KEY": "a-very-long-random-secret-key-for-tests-0123456789abcdef",
     "ALLOWED_HOSTS": "funera.co.za",
     "SITE_URL": "https://funera.co.za",
+    "EMAIL_BACKEND": "django.core.mail.backends.smtp.EmailBackend",
+    "EMAIL_HOST": "smtp.example.com",
 }
 
 
@@ -45,7 +47,33 @@ class ProductionGuardTests(SimpleTestCase):
 
     def test_http_site_url_refused(self):
         with self.assertRaises(ImproperlyConfigured):
-            load_production(**{**GOOD, "SITE_URL": "http://funera.example.com"})
+            load_production(**{**GOOD, "SITE_URL": "http://funera.co.za"})
+
+
+class EmailGuardTests(SimpleTestCase):
+    def test_smtp_without_host_is_refused_in_production(self):
+        with self.assertRaises(ImproperlyConfigured):
+            load_production(**{**GOOD, "EMAIL_HOST": ""})
+
+    def test_console_backend_is_refused_in_production(self):
+        with self.assertRaises(ImproperlyConfigured):
+            load_production(**{**GOOD, "EMAIL_BACKEND": "django.core.mail.backends.console.EmailBackend"})
+
+    def test_smtp_without_host_falls_back_to_console_outside_production(self):
+        with (
+            mock.patch.dict(
+                os.environ,
+                {"EMAIL_BACKEND": "django.core.mail.backends.smtp.EmailBackend", "EMAIL_HOST": ""},
+                clear=True,
+            ),
+            mock.patch("environ.Env.read_env"),
+        ):
+            base = importlib.reload(importlib.import_module("config.settings.base"))
+            try:
+                self.assertTrue(base.EMAIL_BACKEND.endswith("console.EmailBackend"))
+                self.assertTrue(base.EMAIL_MISCONFIGURED)
+            finally:
+                importlib.reload(base)
 
 
 class PayFastProductionGuardTests(SimpleTestCase):

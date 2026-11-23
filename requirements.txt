@@ -6,3 +6,4 @@ whitenoise>=6.12,<7
 django-axes>=9.0,<10        # locks out repeated bad admin logins
 psycopg[binary]>=3.3.8,<4
 gunicorn>=26.2,<27
+reportlab>=5.1,<6          # quotation PDFs

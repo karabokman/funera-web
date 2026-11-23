@@ -92,8 +92,8 @@ class Terms(TemplateView):
 
 @require_GET
 def robots_txt(request):
-    admin_path = "/" + settings.ADMIN_URL
-    body = f"User-agent: *\nDisallow: {admin_path}\nDisallow: /portal/\nAllow: /\n\nSitemap: {settings.SITE_URL}/sitemap.xml\n"
+    # The admin and staff addresses are deliberately NOT listed: robots.txt is public and would give them away.
+    body = f"User-agent: *\nDisallow: /portal/\nAllow: /\n\nSitemap: {settings.SITE_URL}/sitemap.xml\n"
     return HttpResponse(body, content_type="text/plain")
 
 

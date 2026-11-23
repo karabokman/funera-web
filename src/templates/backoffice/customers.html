@@ -1,0 +1,14 @@
+{% extends "backoffice/base.html" %}{% load staff_ui %}
+{% block staff %}
+<h1 class="h-section">Customers</h1>
+<div class="mt-6">{% include "backoffice/_filters.html" %}</div>
+<div class="overflow-x-auto rounded-2xl border border-line bg-white"><table class="w-full text-left text-sm">
+  <thead class="border-b border-line text-xs uppercase tracking-wide text-slate-500"><tr><th class="p-3">Business</th><th class="p-3">Contact</th><th class="p-3">Subscriptions</th><th class="p-3">Since</th></tr></thead>
+  <tbody class="divide-y divide-line">{% for c in page %}<tr class="hover:bg-paper">
+    <td class="p-3"><a class="font-semibold text-brand-dark underline" href="{% url 'backoffice:customer' c.pk %}">{{ c.business_name }}</a></td>
+    <td class="p-3">{{ c.name }}<br><span class="text-slate-500">{{ c.email }}</span></td>
+    <td class="p-3">{% for s in c.subscriptions.all %}{{ s.plan.name }} {% include "backoffice/_badge.html" with label=s.get_status_display tone=s.status|tone %} {% empty %}<span class="text-slate-400">none</span>{% endfor %}</td>
+    <td class="p-3 text-slate-600">{{ c.created_at|date:"j M Y" }}</td></tr>
+  {% empty %}<tr><td colspan="4" class="p-6 text-center text-slate-500">No customers yet.</td></tr>{% endfor %}</tbody></table></div>
+{% include "backoffice/_pagination.html" %}
+{% endblock %}

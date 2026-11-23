@@ -33,3 +33,6 @@ Preload is off. Enable `SECURE_HSTS_PRELOAD` only when every subdomain serves ht
 
 ## Monitoring
 Point an uptime monitor at `https://<domain>/healthz/` (returns 503 if the database is unreachable). Optional cookie-free analytics: set `PLAUSIBLE_DOMAIN`.
+
+## Quotations
+Set `VAT_RATE`, `VAT_NUMBER`, `QUOTE_VALID_DAYS` if needed, run `migrate`, and create staff users (`createsuperuser`). E-mail must work: quotations are sent by e-mail. No scheduled jobs are required.

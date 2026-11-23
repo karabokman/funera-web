@@ -1,0 +1,30 @@
+{% extends "backoffice/base.html" %}
+{% block staff %}
+<h1 class="h-section">Dashboard</h1>
+<div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+  <a class="card block hover:border-brand" href="{% url 'backoffice:leads' %}?status=new"><p class="text-sm text-slate-500">New leads</p><p class="mt-1 text-3xl font-bold">{{ stats.new_leads }}</p><p class="text-xs text-slate-500">{{ stats.leads_30d }} in the last 30 days</p></a>
+  <a class="card block hover:border-brand" href="{% url 'backoffice:quotes' %}?status=sent"><p class="text-sm text-slate-500">Quotations out</p><p class="mt-1 text-3xl font-bold">{{ stats.open_quotes }}</p><p class="text-xs text-slate-500">worth R{{ stats.open_quote_value|floatformat:"0g" }} a month · {{ stats.draft_quotes }} draft{{ stats.draft_quotes|pluralize }}</p></a>
+  <a class="card block hover:border-brand" href="{% url 'backoffice:subscriptions' %}?status=active"><p class="text-sm text-slate-500">Monthly recurring revenue</p><p class="mt-1 text-3xl font-bold">R{{ stats.mrr|floatformat:"0g" }}</p><p class="text-xs text-slate-500">as charged; annual plans count 1/12</p></a>
+  <a class="card block hover:border-brand" href="{% url 'backoffice:refunds' %}"><p class="text-sm text-slate-500">Refunds waiting</p><p class="mt-1 text-3xl font-bold {% if stats.refunds_waiting %}text-amber-700{% endif %}">{{ stats.refunds_waiting }}</p><p class="text-xs text-slate-500">need a decision</p></a>
+</div>
+
+<div class="mt-8 grid gap-6 lg:grid-cols-3">
+  <section class="card lg:col-span-2"><h2 class="text-lg font-bold">Needs attention</h2>
+    <ul class="mt-3 divide-y divide-line text-sm">
+      {% for q in stats.expiring_quotes %}<li class="flex justify-between py-2"><a class="font-semibold text-brand-dark underline" href="{% url 'backoffice:quote' q.pk %}">{{ q.number }} · {{ q.business_name }}</a><span class="text-amber-800">expires {{ q.valid_until|date:"j M" }}</span></li>{% endfor %}
+      {% for q in stats.stale_quotes %}<li class="flex justify-between py-2"><a class="font-semibold text-brand-dark underline" href="{% url 'backoffice:quote' q.pk %}">{{ q.number }} · {{ q.business_name }}</a><span class="text-slate-600">sent {{ q.sent_at|date:"j M" }}, no reply: follow up</span></li>{% endfor %}
+      {% if stats.accepted_unpaid %}<li class="flex justify-between py-2"><a class="font-semibold text-brand-dark underline" href="{% url 'backoffice:subscriptions' %}?status=pending">Accepted, first payment not received</a><span>{{ stats.accepted_unpaid }}</span></li>{% endif %}
+      {% if stats.new_leads %}<li class="flex justify-between py-2"><a class="font-semibold text-brand-dark underline" href="{% url 'backoffice:leads' %}?status=new">New leads to contact</a><span>{{ stats.new_leads }}</span></li>{% endif %}
+      {% if not stats.expiring_quotes and not stats.stale_quotes and not stats.accepted_unpaid and not stats.new_leads %}<li class="py-2 text-slate-500">Nothing needs attention right now.</li>{% endif %}
+    </ul></section>
+  <section class="card"><h2 class="text-lg font-bold">Subscriptions</h2>
+    <dl class="mt-3 space-y-2 text-sm">{% for label, n in stats.subscriptions.items %}<div class="flex justify-between"><dt class="text-slate-600">{{ label }}</dt><dd class="font-semibold">{{ n }}</dd></div>{% endfor %}</dl></section>
+</div>
+
+<div class="mt-6 grid gap-6 lg:grid-cols-3">
+  <section class="card"><h2 class="text-lg font-bold">Lead pipeline</h2>
+    <dl class="mt-3 space-y-2 text-sm">{% for label, n in stats.funnel %}<div class="flex justify-between"><dt class="text-slate-600">{{ label }}</dt><dd class="font-semibold">{{ n }}</dd></div>{% endfor %}</dl></section>
+  <section class="card lg:col-span-2"><h2 class="text-lg font-bold">Recent activity</h2>
+    <ul class="mt-3 divide-y divide-line text-sm">{% for a in stats.activity %}<li class="flex justify-between gap-4 py-2"><span>{{ a.text }}</span><span class="shrink-0 text-slate-500">{{ a.when|date:"j M H:i" }}</span></li>{% empty %}<li class="py-2 text-slate-500">No activity yet.</li>{% endfor %}</ul></section>
+</div>
+{% endblock %}

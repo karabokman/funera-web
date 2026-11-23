@@ -1,0 +1,14 @@
+{% extends "backoffice/base.html" %}{% load staff_ui %}
+{% block staff %}
+<h1 class="h-section">Subscriptions</h1>
+<div class="mt-6">{% include "backoffice/_filters.html" %}</div>
+<div class="overflow-x-auto rounded-2xl border border-line bg-white"><table class="w-full text-left text-sm">
+  <thead class="border-b border-line text-xs uppercase tracking-wide text-slate-500"><tr><th class="p-3">Reference</th><th class="p-3">Business</th><th class="p-3">Plan</th><th class="p-3 text-right">Recurring</th><th class="p-3">Next payment</th><th class="p-3">Status</th></tr></thead>
+  <tbody class="divide-y divide-line">{% for s in page %}<tr class="hover:bg-paper">
+    <td class="p-3"><a class="font-semibold text-brand-dark underline" href="{% url 'backoffice:subscription' s.pk %}">{{ s.reference }}</a></td>
+    <td class="p-3">{{ s.customer.business_name }}</td><td class="p-3">{{ s.plan.name }} · {{ s.get_billing_period_display|lower }}</td>
+    <td class="p-3 text-right">R{{ s.recurring_amount|floatformat:"2g" }}</td><td class="p-3">{{ s.next_billing_date|date:"j M Y"|default:"—" }}</td>
+    <td class="p-3">{% include "backoffice/_badge.html" with label=s.get_status_display tone=s.status|tone %}</td></tr>
+  {% empty %}<tr><td colspan="6" class="p-6 text-center text-slate-500">No subscriptions match.</td></tr>{% endfor %}</tbody></table></div>
+{% include "backoffice/_pagination.html" %}
+{% endblock %}

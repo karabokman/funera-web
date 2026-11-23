@@ -1,0 +1,6 @@
+Quotation declined
+
+{{ quote.number }} · {{ quote.business_name }}
+{% if quote.decision_note %}Their note: {{ quote.decision_note }}{% endif %}
+
+{{ staff_url }}quotes/{{ quote.pk }}/

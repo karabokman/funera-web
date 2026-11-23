@@ -9,7 +9,7 @@ EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 STORAGES = {**STORAGES, "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"}}  # noqa: F405
 AXES_ENABLED = False
 SALES_NOTIFY_EMAILS = ["sales@example.com"]
-CONTACT_EMAIL = "funera.test"
+CONTACT_EMAIL = "hello@funera.test"
 SITE_URL = "https://funera.test"
 
 PAYFAST_MERCHANT_ID = "10000100"
@@ -22,6 +22,8 @@ BILLING_TRUSTED_PROXIES = 0
 
 # Hermetic: a developer's local .env must never change what the tests see, so every setting a test relies on is pinned here.
 ADMIN_URL = "admin/"
+STAFF_URL = "staff/"
+STAFF_LOGIN_URL = "/staff/login/"
 COMPANY_LEGAL_NAME = "Funera Test (Pty) Ltd"
 CONTACT_PHONE = ""
 INFORMATION_OFFICER_EMAIL = "privacy@funera.test"
@@ -43,3 +45,6 @@ PAYFAST_ALLOWED_NETWORKS = [
     "102.216.36.128/28",
     "144.126.193.139/32",
 ]
+VAT_RATE = 0.15
+VAT_NUMBER = ""
+QUOTE_VALID_DAYS = 30

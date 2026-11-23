@@ -12,6 +12,12 @@ if ALLOWED_HOSTS == ["localhost", "127.0.0.1"]:  # noqa: F405
 if not SITE_URL.startswith("https://"):  # noqa: F405
     raise ImproperlyConfigured("SITE_URL must be the public https:// address of the site.")
 
+if EMAIL_MISCONFIGURED or EMAIL_BACKEND.endswith("console.EmailBackend"):  # noqa: F405
+    raise ImproperlyConfigured(
+        "E-mail is not configured: set EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend and EMAIL_HOST "
+        "(quotations, sign-in links and notifications are sent by e-mail)."
+    )
+
 if PAYFAST_MERCHANT_ID and PAYFAST_SANDBOX:  # noqa: F405
     raise ImproperlyConfigured(
         "PayFast merchant details are set but PAYFAST_SANDBOX is still on: set PAYFAST_SANDBOX=False to take real payments."

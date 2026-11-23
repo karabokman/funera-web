@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block robots %}<meta name="robots" content="noindex, nofollow">{% endblock %}
+{% block content %}
+<section class="section"><div class="container-page max-w-4xl">
+  {% for message in messages %}<p class="mb-4 rounded-xl p-4 text-sm font-medium print:hidden {% if message.tags == 'error' %}bg-red-50 text-red-800{% else %}bg-emerald-50 text-emerald-900{% endif %}" role="{% if message.tags == 'error' %}alert{% else %}status{% endif %}">{{ message }}</p>{% endfor %}
+
+  {% if quote.status == "cancelled" %}<p class="mb-4 rounded-xl bg-slate-100 p-4 text-sm text-slate-700">This quotation was withdrawn. Please contact us for an updated one.</p>
+  {% elif quote.is_expired %}<p class="mb-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">This quotation expired on {{ quote.valid_until|date:"j F Y" }}. Please contact us and we will send a new one.</p>
+  {% elif quote.status == "declined" %}<p class="mb-4 rounded-xl bg-slate-100 p-4 text-sm text-slate-700">You declined this quotation. Changed your mind? Contact us and we will gladly help.</p>{% endif %}
+
+  {% include "quotes/_document.html" %}
+
+  {% if quote.is_open %}
+  <div class="mt-8 grid gap-6 print:hidden md:grid-cols-5">
+    <form method="post" action="{% url 'quotes:accept' quote.token %}" class="card space-y-4 md:col-span-3">{% csrf_token %}
+      <h2 class="text-lg font-bold">Accept this quotation</h2>
+      <div><label class="label" for="{{ accept_form.name.id_for_label }}">{{ accept_form.name.label }}</label>{{ accept_form.name }}</div>
+      <label class="flex items-start gap-3 text-sm text-slate-700"><input type="checkbox" name="accept" class="mt-1 h-5 w-5 rounded border-line text-brand" required>
+        <span>I accept this quotation on behalf of {{ quote.business_name }}, and agree to the <a class="font-medium text-brand-dark underline" href="{% url 'pages:subscription_terms' %}" target="_blank" rel="noopener">subscription terms</a> and the <a class="font-medium text-brand-dark underline" href="{% url 'pages:privacy' %}" target="_blank" rel="noopener">privacy notice</a>.</span></label>
+      <button type="submit" class="btn-primary btn-lg w-full">Accept quotation</button>
+    </form>
+    <form method="post" action="{% url 'quotes:decline' quote.token %}" class="card space-y-4 md:col-span-2">{% csrf_token %}
+      <h2 class="text-lg font-bold">Not for you?</h2>
+      <div><label class="label" for="{{ decline_form.reason.id_for_label }}">{{ decline_form.reason.label }}</label>{{ decline_form.reason }}</div>
+      <button type="submit" class="btn-outline">Decline</button>
+    </form>
+  </div>
+  {% elif quote.status == "accepted" %}
+  <div class="card mt-8 print:hidden"><h2 class="text-lg font-bold">Accepted{% if quote.decided_at %} on {{ quote.decided_at|date:"j F Y" }}{% endif %}</h2>
+    {% if pay_url %}<p class="mt-2 text-slate-700">The next step is your first payment. You pay securely on PayFast.</p><a class="btn-primary btn-lg mt-5" href="{{ pay_url }}">Continue to payment</a>
+    {% else %}<p class="mt-2 text-slate-700">Thank you. We will be in touch shortly with payment details and to set up your platform.</p>{% endif %}</div>
+  {% endif %}
+  <p class="mt-6 flex justify-center gap-6 text-sm font-semibold text-brand-dark print:hidden"><a class="underline" href="{% url 'quotes:pdf' quote.token %}">Download PDF</a><button type="button" class="underline" data-print>Print</button></p>
+</div></section>
+{% endblock %}

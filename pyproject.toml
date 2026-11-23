@@ -9,4 +9,4 @@ select = ["E", "F", "W", "I", "B", "UP", "DJ"]
 ignore = ["E501", "DJ001", "DJ012", "B904"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["billing", "catalog", "config", "leads", "pages"]
+known-first-party = ["backoffice", "billing", "quotes", "catalog", "config", "leads", "pages"]

@@ -41,3 +41,6 @@ python manage.py test --settings=config.settings.test
 
 ## Before going live
 Read [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) and [docs/CONTENT.md](docs/CONTENT.md). In short: set the environment variables, set plan prices in the admin, replace the placeholder contact details, and have the privacy notice and website terms reviewed by a lawyer.
+
+## Quotations and back-office
+Sales run by quotation: see [docs/QUOTATIONS.md](docs/QUOTATIONS.md). Staff sign in at `/staff/login/` (users need `is_staff`). Run `python manage.py migrate` for the `leads` and `quotes` migrations.

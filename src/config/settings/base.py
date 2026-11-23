@@ -31,6 +31,8 @@ INSTALLED_APPS = [
     "catalog",
     "leads",
     "billing",
+    "quotes",
+    "backoffice",
 ]
 
 MIDDLEWARE = [
@@ -97,8 +99,8 @@ STORAGES = {
 # --- Business details shown on the site and in e-mails ------------------------------------------------
 BRAND_NAME = "Funera"
 BRAND_SLOGAN = "Manage with care. Operate with confidence."
-COMPANY_LEGAL_NAME = env("COMPANY_LEGAL_NAME", default="Agencode Technologies")
-CONTACT_EMAIL = env("CONTACT_EMAIL", default="hello@funera.co.za")  # shown on the site: set your real address
+COMPANY_LEGAL_NAME = env("COMPANY_LEGAL_NAME", default="Funera")
+CONTACT_EMAIL = env("CONTACT_EMAIL", default="hello@example.com")  # shown on the site: set your real address
 CONTACT_PHONE = env("CONTACT_PHONE", default="")
 INFORMATION_OFFICER_EMAIL = env("INFORMATION_OFFICER_EMAIL", default="")  # POPIA: shown in the privacy notice
 SALES_NOTIFY_EMAILS = env.list("SALES_NOTIFY_EMAILS", default=[])  # who is told about each new enquiry
@@ -110,12 +112,17 @@ PLAUSIBLE_SCRIPT_URL = env("PLAUSIBLE_SCRIPT_URL", default="https://plausible.io
 
 # --- E-mail ---------------------------------------------------------------------------------------------------
 EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
-EMAIL_HOST = env("EMAIL_HOST", default="localhost")
+EMAIL_HOST = env("EMAIL_HOST", default="")
 EMAIL_PORT = env.int("EMAIL_PORT", default=587)
 EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
 EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="Funera <no-reply@funera.co.za>")
+# An SMTP backend with no host cannot send ("SMTPServerDisconnected: please run connect() first"). Fall back to printing
+# messages in the console and remember it, so production can refuse to start in that state.
+EMAIL_MISCONFIGURED = EMAIL_BACKEND.endswith("smtp.EmailBackend") and not EMAIL_HOST.strip()
+if EMAIL_MISCONFIGURED:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="Funera <no-reply@example.com>")
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
 
 LOGGING = {
@@ -152,3 +159,13 @@ PAUSE_MAX_CYCLES = env.int("PAUSE_MAX_CYCLES", default=3)  # most billing period
 REFUND_WINDOW_DAYS = env.int(
     "REFUND_WINDOW_DAYS", default=7
 )  # how long after a payment a client may request a refund (your policy)
+
+# --- Quotations and back-office -------------------------------------------------------
+# South African prices include VAT. Staff enter the final price and tick "includes VAT" on each quotation; this is the rate
+# used to show the VAT portion (15% standard rate).
+VAT_RATE = env.float("VAT_RATE", default=0.15)
+VAT_NUMBER = env("VAT_NUMBER", default="")
+QUOTE_VALID_DAYS = env.int("QUOTE_VALID_DAYS", default=30)
+# The staff back-office address. Like ADMIN_URL, set it to something only your team knows: nothing on the public site links to it.
+STAFF_URL = env("STAFF_URL", default="staff/").strip("/") + "/"
+STAFF_LOGIN_URL = f"/{STAFF_URL}login/"

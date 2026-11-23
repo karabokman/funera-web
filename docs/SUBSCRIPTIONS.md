@@ -54,3 +54,6 @@ Implementations (`DockerProvisioner` using the existing multi-customer deploy sc
 
 ## Decisions needed
 Payment provider (e.g. PayFast/Paystack/Stripe), billing cycle and proration rules, trial policy, data-retention period after cancellation, whether clients self-serve or sales approves each, and a job runner (Celery/RQ vs a database-backed queue). Admin-only staff access for customers first; a client billing portal can follow.
+
+## Subscriptions from quotations
+An accepted quotation creates a pending subscription at the quoted VAT-inclusive amounts; the client pays through the usual PayFast checkout link. Staff manage pause/resume/cancel/refunds in `/staff/`.

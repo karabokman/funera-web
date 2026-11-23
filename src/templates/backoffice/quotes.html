@@ -1,0 +1,16 @@
+{% extends "backoffice/base.html" %}{% load staff_ui %}
+{% block staff %}
+<div class="flex flex-wrap items-center justify-between gap-3"><h1 class="h-section">Quotations</h1><a class="btn-primary" href="{% url 'backoffice:quote_new' %}">New quotation</a></div>
+<div class="mt-6">{% include "backoffice/_filters.html" %}</div>
+<div class="overflow-x-auto rounded-2xl border border-line bg-white"><table class="w-full text-left text-sm">
+  <thead class="border-b border-line text-xs uppercase tracking-wide text-slate-500"><tr><th class="p-3">Number</th><th class="p-3">Business</th><th class="p-3">Plan</th><th class="p-3 text-right">Recurring</th><th class="p-3">Valid until</th><th class="p-3">Status</th></tr></thead>
+  <tbody class="divide-y divide-line">{% for q in page %}<tr class="hover:bg-paper">
+    <td class="p-3"><a class="font-semibold text-brand-dark underline" href="{% url 'backoffice:quote' q.pk %}">{{ q.number }}</a></td>
+    <td class="p-3">{{ q.business_name }}<br><span class="text-slate-500">{{ q.email }}</span></td>
+    <td class="p-3">{{ q.plan.name }} · {{ q.get_billing_period_display|lower }}</td>
+    <td class="p-3 text-right">R{{ q.recurring_gross|floatformat:"2g" }}</td>
+    <td class="p-3">{{ q.valid_until|date:"j M Y" }}</td>
+    <td class="p-3">{% include "backoffice/_badge.html" with label=q.display_status tone=q.display_status|tone %}</td></tr>
+  {% empty %}<tr><td colspan="6" class="p-6 text-center text-slate-500">No quotations yet.</td></tr>{% endfor %}</tbody></table></div>
+{% include "backoffice/_pagination.html" %}
+{% endblock %}

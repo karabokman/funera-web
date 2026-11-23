@@ -1,0 +1,11 @@
+Hello {{ quote.contact_name }},
+
+Thank you for your interest in {{ brand }}. Your quotation {{ quote.number }} for {{ quote.business_name }} is ready:
+
+{{ link }}
+
+It is valid until {{ quote.valid_until|date:"j F Y" }}. A PDF copy is attached. You can also read it online and accept it there when you are ready.
+
+Questions? Just reply to this e-mail.
+
+{{ brand }}

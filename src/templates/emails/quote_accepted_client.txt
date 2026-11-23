@@ -1,0 +1,7 @@
+Hello {{ quote.contact_name }},
+
+Thank you for accepting quotation {{ quote.number }}. {% if pay_link %}The next step is your first payment of R{{ quote.first_payment_gross }}:
+
+{{ pay_link }}{% else %}We will contact you shortly with payment details.{% endif %}
+
+{{ brand }}

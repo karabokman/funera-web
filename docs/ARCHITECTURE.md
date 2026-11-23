@@ -24,3 +24,6 @@ Strict CSP without inline code (admin excluded), Permissions-Policy, COOP, HSTS,
 
 ## Front end
 Tailwind v4 built with `@tailwindcss/cli`. Brand tokens are defined once in `src/static/src/input.css`. Button styles are `@utility` rules (Tailwind v4 cannot `@apply` classes defined in `@layer components`).
+
+## quotes and backoffice apps
+`quotes` holds Quote/QuoteLine/QuoteEvent, `services.py` (send, accept, decline, cancel, duplicate) and the public token pages. `backoffice` is the staff UI under `/staff/` (StaffRequiredMixin: anonymous to login, non-staff 403). Accepting a quote creates a Customer and pending Subscription via `billing`. See QUOTATIONS.md.

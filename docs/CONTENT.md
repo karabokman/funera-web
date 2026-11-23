@@ -12,3 +12,6 @@ Items that need a human decision before launch:
 - **Claims**: the security page describes controls the platform has; confirm each is true for your hosting before publishing.
 - **Logo**: the supplied file is a cut-out of a photographed mockup. Replace `src/static/img/logo*.png`, `mark*.png`, icons and `og.png` with files exported from the original vector artwork.
 - **Open Graph image** (`og.png`) is a generated placeholder with the slogan.
+
+## Quote-only pricing
+Leave plan prices blank in the admin and the site shows "Get a quote". Fill them in later to show prices and pre-fill quotations.

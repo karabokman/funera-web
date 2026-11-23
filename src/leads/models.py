@@ -8,6 +8,7 @@ class Lead(models.Model):
         NEW = "new", "New"
         CONTACTED = "contacted", "Contacted"
         DEMO = "demo", "Demo booked"
+        QUOTED = "quoted", "Quoted"
         WON = "won", "Won"
         LOST = "lost", "Lost"
 

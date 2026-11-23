@@ -17,6 +17,10 @@
     menu.addEventListener("click", function (event) { if (event.target.closest("a")) { setOpen(false); } });
   }
 
+  // Print or save as PDF (quotations)
+  var print = document.querySelector("[data-print]");
+  if (print) { print.addEventListener("click", function () { window.print(); }); }
+
   // Contact form: stop double submits and say we are working.
   var form = document.querySelector("[data-lead-form]");
   if (form) {
