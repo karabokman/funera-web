@@ -7,14 +7,18 @@ from .models import Customer, Payment, Refund, Subscription, SubscriptionEvent
 STAFF = SubscriptionEvent.Actor.STAFF
 
 
-def _each(modeladmin, request, queryset, action, done):
-    """Run ``action(obj)`` on every selected row and report each outcome; one failure never stops the others."""
+def _each(modeladmin, request, queryset, action, done, audit_action):
+    """Run ``action(obj)`` on every selected row and report each outcome; one failure never stops the others.
+    Every success is written to the audit log with the signed-in user."""
+    from backoffice import audit
+
     for obj in queryset:
         try:
             action(obj)
         except (payfast.GatewayUnavailable, BillingError) as exc:
             modeladmin.message_user(request, f"{obj}: not done ({exc}).", messages.ERROR)
         else:
+            audit.record(request, audit_action, obj, "via the site admin")
             modeladmin.message_user(request, f"{obj}: {done}.", messages.SUCCESS)
 
 
@@ -41,17 +45,19 @@ class EventInline(admin.TabularInline):
 
 @admin.action(description="Cancel selected subscriptions (stops PayFast collections)")
 def cancel_subscriptions(modeladmin, request, queryset):
-    _each(modeladmin, request, queryset, lambda s: lifecycle.cancel(s, actor=STAFF), "cancelled")
+    _each(
+        modeladmin, request, queryset, lambda s: lifecycle.cancel(s, actor=STAFF), "cancelled", "subscription.cancelled"
+    )
 
 
 @admin.action(description="Pause selected subscriptions for one billing period")
 def pause_subscriptions(modeladmin, request, queryset):
-    _each(modeladmin, request, queryset, lambda s: lifecycle.pause(s, 1, actor=STAFF), "paused")
+    _each(modeladmin, request, queryset, lambda s: lifecycle.pause(s, 1, actor=STAFF), "paused", "subscription.paused")
 
 
 @admin.action(description="Resume selected paused subscriptions")
 def resume_subscriptions(modeladmin, request, queryset):
-    _each(modeladmin, request, queryset, lambda s: lifecycle.resume(s, actor=STAFF), "resumed")
+    _each(modeladmin, request, queryset, lambda s: lifecycle.resume(s, actor=STAFF), "resumed", "subscription.resumed")
 
 
 @admin.register(Subscription)
@@ -94,12 +100,12 @@ class CustomerAdmin(admin.ModelAdmin):
 
 @admin.action(description="Process selected refunds (refund the card via PayFast)")
 def process_refunds(modeladmin, request, queryset):
-    _each(modeladmin, request, queryset, refunds.process, "refunded")
+    _each(modeladmin, request, queryset, refunds.process, "refunded", "refund.processed")
 
 
 @admin.action(description="Decline selected refunds")
 def decline_refunds(modeladmin, request, queryset):
-    _each(modeladmin, request, queryset, refunds.decline, "declined")
+    _each(modeladmin, request, queryset, refunds.decline, "declined", "refund.declined")
 
 
 @admin.register(Refund)

@@ -19,6 +19,7 @@ urlpatterns = [
     path("quotes/<int:pk>/send/", v.QuoteSend.as_view(), name="quote_send"),
     path("quotes/<int:pk>/cancel/", v.QuoteCancel.as_view(), name="quote_cancel"),
     path("quotes/<int:pk>/duplicate/", v.QuoteDuplicate.as_view(), name="quote_duplicate"),
+    path("audit/", v.AuditLogView.as_view(), name="audit"),
     path("team/", v.TeamView.as_view(), name="team"),
     path("offers/", v.OfferListView.as_view(), name="offers"),
     path("offers/new/", v.OfferEditView.as_view(), name="offer_new"),

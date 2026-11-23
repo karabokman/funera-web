@@ -28,7 +28,7 @@ from quotes.forms import OfferForm, OfferLineFormSet, QuoteForm, QuoteLineFormSe
 from quotes.models import Quote, QuoteTemplate
 from quotes.views import pdf_response
 
-from . import followups, roles, stats
+from . import audit, audit_log, followups, roles, stats
 from .forms import FollowUpForm, LeadUpdateForm
 from .mixins import AdminRequiredMixin, StaffRequiredMixin
 
@@ -112,12 +112,19 @@ class LeadDetailView(StaffRequiredMixin, FormView):
         return {**super().get_form_kwargs(), "instance": self.lead}
 
     def form_valid(self, form):
+        changes = []
+        if "status" in form.changed_data:
+            changes.append(f"status {form.initial.get('status')} to {form.cleaned_data['status']}")
+        if "internal_notes" in form.changed_data:
+            changes.append("notes edited")
         lead = form.save(commit=False)
         if lead.status != Lead.Status.NEW and lead.contacted_at is None:
             lead.contacted_at = timezone.now()
         if lead.status in (Lead.Status.WON, Lead.Status.LOST):
             followups.clear(lead)  # nothing left to chase
         lead.save()
+        if changes:
+            audit.record(self.request, "lead.updated", lead, "; ".join(changes))
         messages.success(self.request, "Lead updated.")
         return redirect("backoffice:lead", pk=lead.pk)
 
@@ -214,12 +221,19 @@ class QuoteEditView(StaffRequiredMixin, TemplateView):
         form, lines = self.forms(request.POST)
         if form.is_valid() and lines.is_valid():
             quote = form.save(commit=False)
-            if self.quote is None:
+            created = self.quote is None
+            if created:
                 quote_services.save_new(quote, request.user, lead=self.lead)
             else:
                 quote.save()
             lines.instance = quote
             lines.save()
+            audit.record(
+                request,
+                "quote.created" if created else "quote.edited",
+                quote,
+                f"R{quote.recurring_price} {quote.billing_period}",
+            )
             messages.success(request, f"Quotation {quote.number} saved.")
             return redirect("backoffice:quote", pk=quote.pk)
         return self.render_to_response(self.get_context_data(form_pair=(form, lines)))
@@ -246,6 +260,10 @@ class QuoteDetailView(StaffPage):
 class QuoteAction(StaffRequiredMixin, View):
     http_method_names = ["post"]
     success = ""
+    audit_action = ""
+
+    def audit_detail(self, quote, result) -> str:
+        return ""
 
     def post(self, request, pk):
         quote = get_object_or_404(Quote, pk=pk)
@@ -255,6 +273,8 @@ class QuoteAction(StaffRequiredMixin, View):
             messages.error(request, str(exc))
         else:
             messages.success(request, self.success)
+            target = result if isinstance(result, Quote) else quote
+            audit.record(request, self.audit_action, target, self.audit_detail(quote, result))
             if isinstance(result, Quote):
                 return redirect("backoffice:quote", pk=result.pk)
         return redirect("backoffice:quote", pk=quote.pk)
@@ -265,13 +285,20 @@ class QuoteAction(StaffRequiredMixin, View):
 
 class QuoteSend(QuoteAction):
     success = "Quotation e-mailed to the client."
+    audit_action = "quote.sent"
 
     def act(self, quote, user):
+        if quote.status == Quote.Status.SENT:
+            self.audit_action = "quote.resent"
         quote_services.send(quote, user)
+
+    def audit_detail(self, quote, result) -> str:
+        return f"to {quote.email}"
 
 
 class QuoteCancel(QuoteAction):
     success = "Quotation cancelled. The client's link now shows it as withdrawn."
+    audit_action = "quote.cancelled"
 
     def act(self, quote, user):
         quote_services.cancel(quote, user)
@@ -279,6 +306,10 @@ class QuoteCancel(QuoteAction):
 
 class QuoteDuplicate(QuoteAction):
     success = "A new draft was created from this quotation."
+    audit_action = "quote.duplicated"
+
+    def audit_detail(self, quote, result) -> str:
+        return f"copy of {quote.number}"
 
     def act(self, quote, user):
         return quote_services.duplicate(quote, user)
@@ -372,8 +403,14 @@ class SubscriptionAction(AdminRequiredMixin, View):
             logger.warning("PayFast did not confirm %s for %s: %s", type(self).__name__, sub.reference, exc)
             messages.error(request, f"PayFast did not confirm the change, so nothing was changed. ({exc})")
         else:
+            audit.record(request, self.audit_action, sub, self.audit_detail(request))
             messages.success(request, self.success)
         return redirect("backoffice:subscription", pk=sub.pk)
+
+    audit_action = ""
+
+    def audit_detail(self, request) -> str:
+        return ""
 
     def act(self, sub, request):
         raise NotImplementedError
@@ -381,6 +418,10 @@ class SubscriptionAction(AdminRequiredMixin, View):
 
 class SubscriptionPause(SubscriptionAction):
     success = "Subscription paused."
+    audit_action = "subscription.paused"
+
+    def audit_detail(self, request) -> str:
+        return f"for {request.POST.get('cycles', '?')} cycle(s)"
 
     def act(self, sub, request):
         form = PauseForm(request.POST, subscription=sub)
@@ -391,6 +432,7 @@ class SubscriptionPause(SubscriptionAction):
 
 class SubscriptionResume(SubscriptionAction):
     success = "Subscription resumed."
+    audit_action = "subscription.resumed"
 
     def act(self, sub, request):
         lifecycle.resume(sub, actor=STAFF)
@@ -398,6 +440,10 @@ class SubscriptionResume(SubscriptionAction):
 
 class SubscriptionCancel(SubscriptionAction):
     success = "Subscription cancelled at PayFast and here."
+    audit_action = "subscription.cancelled"
+
+    def audit_detail(self, request) -> str:
+        return request.POST.get("reason", "")[:200]
 
     def act(self, sub, request):
         lifecycle.cancel(sub, actor=STAFF, reason=request.POST.get("reason", ""))
@@ -407,6 +453,10 @@ class RefundRaise(SubscriptionAction):
     """Staff raise a refund request on a payment (outside the client's refund window if they choose)."""
 
     success = "Refund request recorded. Process it from the refunds list."
+    audit_action = "subscription.refund_raised"
+
+    def audit_detail(self, request) -> str:
+        return request.POST.get("reason", "")[:200]
 
     def act(self, sub, request):
         payment = get_object_or_404(Payment, pk=request.POST.get("payment"), subscription=sub)
@@ -438,15 +488,18 @@ class RefundAction(AdminRequiredMixin, View):
         try:
             if action == "process":
                 refunds.process(refund)
+                audit.record(request, "refund.processed", refund)
                 messages.success(request, "Refunded through PayFast. The client was e-mailed.")
             elif action == "decline":
                 refunds.decline(refund, request.POST.get("note", ""))
+                audit.record(request, "refund.declined", refund, request.POST.get("note", "")[:200])
                 messages.success(request, "Refund declined.")
             else:
                 raise BillingError("Unknown action.")
         except BillingError as exc:
             messages.error(request, str(exc))
         except payfast.GatewayUnavailable as exc:
+            audit.record(request, "refund.failed", refund, str(exc)[:200])
             messages.error(
                 request,
                 f"PayFast did not confirm the refund, so no money was returned. It is marked failed and can be retried. ({exc})",
@@ -514,6 +567,7 @@ class FollowUpAction(StaffRequiredMixin, View):
         except ValueError:
             messages.error(request, "That follow-up action is not recognised.")
             return redirect(target)
+        audit.record(request, f"followup.{action.split(':')[0]}", obj, message)
         messages.success(request, message)
         return redirect(target)
 
@@ -558,11 +612,18 @@ class OfferEditView(AdminRequiredMixin, TemplateView):
         form, lines = self.forms(request.POST)
         if form.is_valid() and lines.is_valid():
             offer = form.save(commit=False)
-            if self.offer is None:
+            created = self.offer is None
+            if created:
                 offer.created_by = request.user
             offer.save()
             lines.instance = offer
             lines.save()
+            audit.record(
+                request,
+                "offer.created" if created else "offer.edited",
+                offer,
+                f"R{offer.recurring_price} {offer.billing_period}",
+            )
             messages.success(request, f'Saved offer "{offer.name}" saved.')
             return redirect("backoffice:offers")
         return self.render_to_response(self.get_context_data(form_pair=(form, lines)))
@@ -574,6 +635,7 @@ class OfferDelete(AdminRequiredMixin, View):
     def post(self, request, pk):
         offer = get_object_or_404(QuoteTemplate, pk=pk)
         name = offer.name
+        audit.record(request, "offer.deleted", offer, f"R{offer.recurring_price} {offer.billing_period}")
         offer.delete()  # quotations already made from it are unaffected: they keep their own copy of every figure
         messages.success(request, f'Saved offer "{name}" deleted.')
         return redirect("backoffice:offers")
@@ -591,6 +653,7 @@ class QuoteSaveAsOffer(AdminRequiredMixin, View):
         except QuoteError as exc:
             messages.error(request, str(exc))
             return redirect("backoffice:quote", pk=quote.pk)
+        audit.record(request, "offer.created", offer, f"saved from {quote.number}")
         messages.success(request, f'Saved as "{offer.name}". Check the figures and wording below.')
         return redirect("backoffice:offer_edit", pk=offer.pk)
 
@@ -609,3 +672,24 @@ class TeamView(AdminRequiredMixin, StaffPage):
             for user in User.objects.filter(is_staff=True).prefetch_related("groups").order_by("-is_active", "username")
         ]
         return super().get_context_data(members=members, admin_group=roles.ADMIN_GROUP, **kwargs)
+
+
+# ------------------------------------------------------------------------------------------------ audit log
+class AuditLogView(AdminRequiredMixin, StaffPage):
+    """Who did what and when: staff actions from the audit log, plus what clients and PayFast did to the same records."""
+
+    template_name = "backoffice/audit.html"
+    title = "Audit log"
+
+    def get_context_data(self, **kwargs):
+        filters = audit_log.Filters.from_request(self.request.GET)
+        rows = audit_log.rows(filters)
+        return super().get_context_data(
+            page=paginate(self.request, rows),
+            f=filters,
+            areas=[(value, label) for value, label, _ in audit.AREAS],
+            capped=len(rows) >= audit_log.LIMIT,
+            limit=audit_log.LIMIT,
+            staff_names=audit_log.staff_names(),
+            **kwargs,
+        )

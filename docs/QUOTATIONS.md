@@ -54,10 +54,20 @@ A saved offer is a plan, price, billing period, VAT setting, wording and once-of
 | Raise, process or decline refunds; the Refunds list | No | Yes |
 | Create, edit or delete saved offers | No | Yes |
 | Revenue figures on the dashboard (monthly recurring revenue, quotation value, refunds waiting) | No | Yes |
-| Team page | No | Yes |
+| Team page and Audit log | No | Yes |
 | Django admin site | No | Superusers only |
 
 - **Admin** is a superuser or any staff user in the group **Funera Admin**. Every other active staff user is **Sales**, so existing staff accounts become Sales when you apply this update; add the people who need it to the group.
 - To change a role, a superuser opens the user in the Django admin: tick *Staff status*, then add or remove the group *Funera Admin*. Untick *Active* to switch an account off.
 - The Django admin (`ADMIN_URL`) is open to superusers only. An Admin who is not a superuser works in the back-office and cannot open it.
 - A Sales user who opens an admin-only page, or presses an admin-only button, sees an "Administrators only" page. Nothing is changed and PayFast is not contacted. Sales can still see each subscription's amounts and payments, because they need them to answer clients; tell me if you want that hidden too.
+
+## Audit log
+Admins open **Audit log** in the back-office to see who did what, and when.
+- **Staff actions** are written the moment they succeed: lead changes, follow-ups, creating/editing/sending/cancelling/duplicating quotations, saved offers, pausing/resuming/cancelling subscriptions, raising/processing/declining refunds, and sign-ins, sign-outs and failed sign-ins. Each entry has the username, the time, what it was on, a short detail and the address the request came from. Passwords are never stored. Bulk actions in the Django admin are logged too ("via the site admin").
+- **Clients and PayFast** (a quotation viewed or accepted, a payment arriving) are shown alongside, marked client/system.
+- Staff history from before this update is kept but shows "staff (before the audit log)", because it never recorded who.
+- Filter by person, area, source, dates or text. The page shows the newest 1 000 entries from each source; narrow the dates for older ones.
+- Entries cannot be edited or deleted in the back-office, and the Django admin shows them read-only. Entries stay when a user account is deleted (the username is copied into the entry).
+- Not recorded: changes made directly in the database or to users and groups in the Django admin (the Django admin keeps its own history for objects you edit there).
+- The log contains staff usernames and IP addresses. Mention that in your internal privacy notes if you need to; it is visible to Admins only.

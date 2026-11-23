@@ -37,3 +37,12 @@ def is_admin(user) -> bool:
 @register.filter
 def role_name(user) -> str:
     return roles.role(user)
+
+
+@register.simple_tag(takes_context=True)
+def keep_filters(context, *names) -> str:
+    """The current query string minus ``page``, for pagination links on pages with several filters."""
+    request = context["request"]
+    params = request.GET.copy()
+    params.pop("page", None)
+    return (params.urlencode() + "&") if params else ""
