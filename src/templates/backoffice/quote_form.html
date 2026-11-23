@@ -2,7 +2,10 @@
 {% block staff %}
 <p><a class="text-sm font-semibold text-brand-dark underline" href="{% if quote %}{% url 'backoffice:quote' quote.pk %}{% elif lead %}{% url 'backoffice:lead' lead.pk %}{% else %}{% url 'backoffice:quotes' %}{% endif %}">&larr; Back</a></p>
 <h1 class="h-section mt-2">{% if quote %}Edit {{ quote.number }}{% else %}New quotation{% if lead %} for {{ lead.business_name }}{% endif %}{% endif %}</h1>
-{% if not quote %}<p class="mt-3 text-sm text-slate-600">Start from a plan's list price and set-up fee:
+{% if not quote and offers %}<div class="mt-4 rounded-2xl border border-brand bg-brand-soft p-4"><p class="text-sm font-semibold text-brand-dark">Start from a saved offer</p>
+  <div class="mt-2 flex flex-wrap gap-2">{% for o in offers %}<a class="btn-sm {% if offer and offer.pk == o.pk %}btn-primary{% else %}btn-outline{% endif %}" href="?{% if lead %}lead={{ lead.pk }}&{% endif %}offer={{ o.pk }}" title="{{ o.description }}">{{ o.name }}</a>{% endfor %}</div>
+  {% if offer %}<p class="mt-2 text-xs text-slate-600">Filled in from "{{ offer.name }}". Change anything you need before saving.</p>{% endif %}</div>{% endif %}
+{% if not quote %}<p class="mt-3 text-sm text-slate-600">{% if offers %}Or start from a plan's list price and set-up fee:{% else %}Start from a plan's list price and set-up fee:{% endif %}
   {% for plan in plans %}<a class="ml-2 font-semibold text-brand-dark underline" href="?{% if lead %}lead={{ lead.pk }}&{% endif %}plan={{ plan.code }}">{{ plan.name }}</a>{% endfor %}. You can change every figure below.</p>{% endif %}
 <form method="post" class="mt-6 space-y-6" novalidate>{% csrf_token %}
   {% if form.errors or lines.total_error_count %}<p class="rounded-xl bg-red-50 p-3 text-sm text-red-800" role="alert">Please correct the errors below.</p>{% endif %}

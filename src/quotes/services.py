@@ -18,7 +18,7 @@ from leads.models import Lead
 
 from . import pdf
 from .errors import QuoteError
-from .models import Quote, QuoteEvent, QuoteLine
+from .models import Quote, QuoteEvent, QuoteLine, QuoteTemplate, QuoteTemplateLine
 
 logger = logging.getLogger(__name__)
 
@@ -34,21 +34,67 @@ def _next_number() -> str:
     return f"{prefix}{(int(last.rsplit('-', 1)[1]) + 1 if last else 1):04d}"
 
 
-def initial_for(plan, lead: Lead | None = None) -> tuple[dict, list[dict]]:
-    """Starting values for a new quotation: the lead's details, the plan's list price and its set-up fee as a line."""
-    initial = {
-        "plan": plan,
-        "billing_period": "monthly",
-        "valid_until": timezone.localdate() + timedelta(days=settings.QUOTE_VALID_DAYS),
-    }
-    if plan is not None and plan.has_price:
-        initial["recurring_price"] = plan.monthly_price
+def initial_for(plan, lead: Lead | None = None, template: QuoteTemplate | None = None) -> tuple[dict, list[dict]]:
+    """Starting values for a new quotation. From a saved offer: its plan, price, wording and lines. Otherwise: the plan's
+    list price (when it has one) and its set-up fee as a line. The lead's contact details are added either way."""
+    today = timezone.localdate()
+    if template is not None:
+        initial = {
+            "plan": template.plan,
+            "billing_period": template.billing_period,
+            "recurring_price": template.recurring_price,
+            "vat_included": template.vat_included,
+            "intro": template.intro,
+            "valid_until": today + timedelta(days=template.valid_days or settings.QUOTE_VALID_DAYS),
+        }
+        lines = [
+            {"description": line.description, "quantity": line.quantity, "unit_price": line.unit_price}
+            for line in template.lines.all()
+        ]
+    else:
+        initial = {
+            "plan": plan,
+            "billing_period": "monthly",
+            "valid_until": today + timedelta(days=settings.QUOTE_VALID_DAYS),
+        }
+        if plan is not None and plan.has_price:
+            initial["recurring_price"] = plan.monthly_price
+        lines = []
+        if plan is not None and plan.setup_fee:
+            lines.append(
+                {"description": "Set-up, data import and onboarding", "quantity": 1, "unit_price": plan.setup_fee}
+            )
     if lead is not None:
         initial.update(contact_name=lead.name, business_name=lead.business_name, email=lead.email, phone=lead.phone)
-    lines = []
-    if plan is not None and plan.setup_fee:
-        lines.append({"description": "Set-up, data import and onboarding", "quantity": 1, "unit_price": plan.setup_fee})
     return initial, lines
+
+
+@transaction.atomic
+def save_template_from_quote(quote: Quote, name: str, user=None) -> QuoteTemplate:
+    """Keep a quotation's plan, price, wording and lines as a reusable offer (never the client's details)."""
+    name = name.strip()
+    if not name:
+        raise QuoteError("Give the saved offer a name.")
+    if QuoteTemplate.objects.filter(name__iexact=name).exists():
+        raise QuoteError(f'A saved offer called "{name}" already exists. Choose another name.')
+    template = QuoteTemplate.objects.create(
+        name=name[:80],
+        plan=quote.plan,
+        billing_period=quote.billing_period,
+        recurring_price=quote.recurring_price,
+        vat_included=quote.vat_included,
+        intro=quote.intro,
+        created_by=user if getattr(user, "is_authenticated", False) else None,
+    )
+    for line in quote.lines.all():
+        QuoteTemplateLine.objects.create(
+            template=template,
+            description=line.description,
+            quantity=line.quantity,
+            unit_price=line.unit_price,
+            order=line.order,
+        )
+    return template
 
 
 @transaction.atomic

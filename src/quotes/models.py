@@ -2,6 +2,7 @@ import secrets
 from decimal import ROUND_HALF_UP, Decimal
 
 from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
 
@@ -181,3 +182,62 @@ class QuoteEvent(models.Model):
 
     def __str__(self) -> str:
         return f"{self.quote.number} {self.kind}"
+
+
+class QuoteTemplate(models.Model):
+    """A saved offer such as "Starter, 10 branches, standard set-up": the plan, price, once-off lines and wording that staff
+    otherwise retype. Starting a quotation from one fills the form; every figure can still be changed before it is saved."""
+
+    name = models.CharField(max_length=80, unique=True)
+    description = models.CharField(max_length=200, blank=True, help_text="When to use this offer. Only staff see it.")
+    plan = models.ForeignKey(Plan, on_delete=models.PROTECT, related_name="quote_templates")
+    billing_period = models.CharField(
+        max_length=8, choices=[("monthly", "Monthly"), ("annual", "Annual")], default="monthly"
+    )
+    recurring_price = models.DecimalField(
+        max_digits=9, decimal_places=2, help_text="The final price charged each billing period."
+    )
+    vat_included = models.BooleanField("Price includes VAT", default=True)
+    valid_days = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(365)],
+        help_text="How many days a quotation made from this stays open. Empty uses the default.",
+    )
+    intro = models.TextField(blank=True, help_text="The note shown at the top of the quotation.")
+    is_active = models.BooleanField(
+        default=True, help_text="Untick to hide it from the list when starting a quotation."
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self) -> str:
+        return self.name
+
+    @property
+    def once_off_total(self) -> Decimal:
+        return money(sum((line.total for line in self.lines.all()), Decimal("0")))
+
+
+class QuoteTemplateLine(models.Model):
+    template = models.ForeignKey(QuoteTemplate, on_delete=models.CASCADE, related_name="lines")
+    description = models.CharField(max_length=200)
+    quantity = models.PositiveIntegerField(default=1)
+    unit_price = models.DecimalField(max_digits=9, decimal_places=2, help_text="Negative for a discount.")
+    order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order", "id"]
+
+    def __str__(self) -> str:
+        return self.description
+
+    @property
+    def total(self) -> Decimal:
+        return money(self.unit_price * self.quantity)

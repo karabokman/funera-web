@@ -23,8 +23,8 @@ from catalog.models import Plan
 from leads.models import Lead
 from quotes import services as quote_services
 from quotes.errors import QuoteError
-from quotes.forms import QuoteForm, QuoteLineFormSet
-from quotes.models import Quote
+from quotes.forms import OfferForm, OfferLineFormSet, QuoteForm, QuoteLineFormSet
+from quotes.models import Quote, QuoteTemplate
 from quotes.views import pdf_response
 
 from . import followups, stats
@@ -129,6 +129,7 @@ class LeadDetailView(StaffRequiredMixin, FormView):
             ),
             quotes=self.lead.quotes.all(),
             plans=Plan.objects.filter(is_active=True),
+            offers=QuoteTemplate.objects.filter(is_active=True),
             **kwargs,
         )
 
@@ -160,6 +161,12 @@ class QuoteEditView(StaffRequiredMixin, TemplateView):
     def setup(self, request, *args, **kwargs):
         super().setup(request, *args, **kwargs)
         self.quote = get_object_or_404(Quote, pk=kwargs["pk"]) if "pk" in kwargs else None
+        offer_id = request.GET.get("offer")
+        self.offer = (
+            QuoteTemplate.objects.filter(pk=offer_id).first()
+            if offer_id and offer_id.isdigit() and not self.quote
+            else None
+        )
         lead_id = request.GET.get("lead")
         self.lead = (
             get_object_or_404(Lead, pk=lead_id)
@@ -185,7 +192,7 @@ class QuoteEditView(StaffRequiredMixin, TemplateView):
     def forms(self, data=None):
         if self.quote:
             return QuoteForm(data, instance=self.quote), QuoteLineFormSet(data, instance=self.quote)
-        initial, lines = quote_services.initial_for(self._plan(), self.lead)
+        initial, lines = quote_services.initial_for(self._plan(), self.lead, self.offer)
         return QuoteForm(data, initial=initial), QuoteLineFormSet(data, instance=Quote(), initial=lines)
 
     def get_context_data(self, **kwargs):
@@ -196,6 +203,8 @@ class QuoteEditView(StaffRequiredMixin, TemplateView):
             quote=self.quote,
             lead=self.lead,
             plans=Plan.objects.filter(is_active=True),
+            offers=QuoteTemplate.objects.filter(is_active=True),
+            offer=self.offer,
             page_title="Edit quotation" if self.quote else "New quotation",
             **kwargs,
         )
@@ -506,3 +515,80 @@ class FollowUpAction(StaffRequiredMixin, View):
             return redirect(target)
         messages.success(request, message)
         return redirect(target)
+
+
+# ------------------------------------------------------------------------------------------------ saved offers
+class OfferListView(StaffPage):
+    template_name = "backoffice/offers.html"
+    title = "Saved offers"
+
+    def get_context_data(self, **kwargs):
+        offers = QuoteTemplate.objects.select_related("plan").prefetch_related("lines")
+        return super().get_context_data(offers=offers, **kwargs)
+
+
+class OfferEditView(StaffRequiredMixin, TemplateView):
+    """Create or edit a saved offer; the header form and its once-off lines are saved together."""
+
+    template_name = "backoffice/offer_form.html"
+
+    def setup(self, request, *args, **kwargs):
+        super().setup(request, *args, **kwargs)
+        self.offer = get_object_or_404(QuoteTemplate, pk=kwargs["pk"]) if "pk" in kwargs else None
+
+    def forms(self, data=None):
+        instance = self.offer
+        return (
+            OfferForm(data, instance=instance),
+            OfferLineFormSet(data, instance=instance or QuoteTemplate()),
+        )
+
+    def get_context_data(self, **kwargs):
+        form, lines = kwargs.pop("form_pair", None) or self.forms()
+        return super().get_context_data(
+            form=form,
+            lines=lines,
+            offer=self.offer,
+            page_title="Edit saved offer" if self.offer else "New saved offer",
+            **kwargs,
+        )
+
+    def post(self, request, *args, **kwargs):
+        form, lines = self.forms(request.POST)
+        if form.is_valid() and lines.is_valid():
+            offer = form.save(commit=False)
+            if self.offer is None:
+                offer.created_by = request.user
+            offer.save()
+            lines.instance = offer
+            lines.save()
+            messages.success(request, f'Saved offer "{offer.name}" saved.')
+            return redirect("backoffice:offers")
+        return self.render_to_response(self.get_context_data(form_pair=(form, lines)))
+
+
+class OfferDelete(StaffRequiredMixin, View):
+    http_method_names = ["post"]
+
+    def post(self, request, pk):
+        offer = get_object_or_404(QuoteTemplate, pk=pk)
+        name = offer.name
+        offer.delete()  # quotations already made from it are unaffected: they keep their own copy of every figure
+        messages.success(request, f'Saved offer "{name}" deleted.')
+        return redirect("backoffice:offers")
+
+
+class QuoteSaveAsOffer(StaffRequiredMixin, View):
+    """Keep this quotation's plan, price, wording and lines as a saved offer."""
+
+    http_method_names = ["post"]
+
+    def post(self, request, pk):
+        quote = get_object_or_404(Quote, pk=pk)
+        try:
+            offer = quote_services.save_template_from_quote(quote, request.POST.get("name", ""), request.user)
+        except QuoteError as exc:
+            messages.error(request, str(exc))
+            return redirect("backoffice:quote", pk=quote.pk)
+        messages.success(request, f'Saved as "{offer.name}". Check the figures and wording below.')
+        return redirect("backoffice:offer_edit", pk=offer.pk)

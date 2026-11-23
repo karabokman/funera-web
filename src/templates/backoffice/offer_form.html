@@ -1,0 +1,29 @@
+{% extends "backoffice/base.html" %}
+{% block staff %}
+<p><a class="text-sm font-semibold text-brand-dark underline" href="{% url 'backoffice:offers' %}">&larr; Saved offers</a></p>
+<h1 class="h-section mt-2">{% if offer %}Edit {{ offer.name }}{% else %}New saved offer{% endif %}</h1>
+<form method="post" class="mt-6 space-y-6" novalidate>{% csrf_token %}
+  {% if form.errors or lines.total_error_count %}<p class="rounded-xl bg-red-50 p-3 text-sm text-red-800" role="alert">Please correct the errors below.</p>{% endif %}
+  <section class="card"><h2 class="text-lg font-bold">Offer</h2>
+    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      {% for f in form %}{% if f.name in "name description plan billing_period recurring_price valid_days" %}<div{% if f.name == "name" or f.name == "description" %} class="sm:col-span-2"{% endif %}><label class="label" for="{{ f.id_for_label }}">{{ f.label }}</label>{{ f }}{% for e in f.errors %}<p class="field-error">{{ e }}</p>{% endfor %}{% if f.name == "valid_days" %}<p class="mt-1 text-xs text-slate-500">{{ f.help_text }}</p>{% endif %}</div>{% endif %}{% endfor %}
+    </div>
+    <label class="mt-4 flex items-start gap-2 text-sm font-semibold" for="{{ form.vat_included.id_for_label }}">{{ form.vat_included }}<span>Price includes VAT <span class="block text-xs font-normal text-slate-500">Enter the final price the client pays, here and on every line below.</span></span></label>
+  </section>
+  <section class="card"><h2 class="text-lg font-bold">Once-off items</h2><p class="mt-1 text-sm text-slate-600">Set-up, training, data import. Use a negative price for a discount. Tick Delete to remove a line.</p>
+    {{ lines.management_form }}
+    <div class="mt-4 space-y-3">{% for lf in lines %}
+      <div class="grid items-end gap-3 sm:grid-cols-12">{{ lf.id }}
+        <div class="sm:col-span-6"><label class="label" for="{{ lf.description.id_for_label }}">Description</label>{{ lf.description }}{% for e in lf.description.errors %}<p class="field-error">{{ e }}</p>{% endfor %}</div>
+        <div class="sm:col-span-2"><label class="label" for="{{ lf.quantity.id_for_label }}">Qty</label>{{ lf.quantity }}</div>
+        <div class="sm:col-span-3"><label class="label" for="{{ lf.unit_price.id_for_label }}">Price</label>{{ lf.unit_price }}{% for e in lf.unit_price.errors %}<p class="field-error">{{ e }}</p>{% endfor %}</div>
+        <div class="text-sm sm:col-span-1">{% if lf.instance.pk %}<label class="flex items-center gap-1">{{ lf.DELETE }} Delete</label>{% endif %}</div>
+      </div>{% endfor %}</div></section>
+  <section class="card"><h2 class="text-lg font-bold">Wording</h2>
+    <div class="mt-4"><label class="label" for="{{ form.intro.id_for_label }}">{{ form.intro.label }}</label>{{ form.intro }}<p class="mt-1 text-xs text-slate-500">{{ form.intro.help_text }}</p></div>
+    <label class="mt-4 flex items-center gap-2 text-sm font-semibold" for="{{ form.is_active.id_for_label }}">{{ form.is_active }} {{ form.is_active.label }}</label>
+  </section>
+  <div class="flex flex-wrap gap-3"><button type="submit" class="btn-primary btn-lg">Save offer</button><a class="btn-outline btn-lg" href="{% url 'backoffice:offers' %}">Cancel</a></div>
+</form>
+{% if offer %}<form method="post" action="{% url 'backoffice:offer_delete' offer.pk %}" class="mt-8 border-t border-line pt-6">{% csrf_token %}<button type="submit" class="btn-outline text-red-700">Delete this saved offer</button><p class="mt-2 text-xs text-slate-500">Quotations already made from it are not affected.</p></form>{% endif %}
+{% endblock %}

@@ -10,7 +10,7 @@
       <a class="nav-link {% if name == 'dashboard' %}!bg-brand-soft !text-brand-dark{% endif %}" href="{% url 'backoffice:dashboard' %}">Dashboard</a>
       <a class="nav-link {% if name == 'follow_ups' %}!bg-brand-soft !text-brand-dark{% endif %}" href="{% url 'backoffice:follow_ups' %}">Follow-ups{% follow_up_badge as due %}{% if due %} <span class="ml-1 rounded-full bg-red-600 px-1.5 py-0.5 text-xs font-bold text-white" aria-label="{{ due }} due">{{ due }}</span>{% endif %}</a>
       <a class="nav-link {% if name == 'leads' or name == 'lead' %}!bg-brand-soft !text-brand-dark{% endif %}" href="{% url 'backoffice:leads' %}">Leads</a>
-      <a class="nav-link {% if 'quote' in name %}!bg-brand-soft !text-brand-dark{% endif %}" href="{% url 'backoffice:quotes' %}">Quotations</a>
+      <a class="nav-link {% if 'quote' in name or 'offer' in name %}!bg-brand-soft !text-brand-dark{% endif %}" href="{% url 'backoffice:quotes' %}">Quotations</a>
       <a class="nav-link {% if 'customer' in name %}!bg-brand-soft !text-brand-dark{% endif %}" href="{% url 'backoffice:customers' %}">Customers</a>
       <a class="nav-link {% if 'subscription' in name %}!bg-brand-soft !text-brand-dark{% endif %}" href="{% url 'backoffice:subscriptions' %}">Subscriptions</a>
       <a class="nav-link {% if 'refund' in name %}!bg-brand-soft !text-brand-dark{% endif %}" href="{% url 'backoffice:refunds' %}">Refunds</a>

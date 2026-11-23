@@ -1,6 +1,6 @@
 {% extends "backoffice/base.html" %}{% load staff_ui %}
 {% block staff %}
-<div class="flex flex-wrap items-center justify-between gap-3"><h1 class="h-section">Quotations</h1><a class="btn-primary" href="{% url 'backoffice:quote_new' %}">New quotation</a></div>
+<div class="flex flex-wrap items-center justify-between gap-3"><h1 class="h-section">Quotations</h1><div class="flex gap-2"><a class="btn-outline" href="{% url 'backoffice:offers' %}">Saved offers</a><a class="btn-primary" href="{% url 'backoffice:quote_new' %}">New quotation</a></div></div>
 <div class="mt-6">{% include "backoffice/_filters.html" %}</div>
 <div class="overflow-x-auto rounded-2xl border border-line bg-white"><table class="w-full text-left text-sm">
   <thead class="border-b border-line text-xs uppercase tracking-wide text-slate-500"><tr><th class="p-3">Number</th><th class="p-3">Business</th><th class="p-3">Plan</th><th class="p-3 text-right">Recurring</th><th class="p-3">Valid until</th><th class="p-3">Follow-up</th><th class="p-3">Status</th></tr></thead>

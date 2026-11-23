@@ -37,3 +37,10 @@ There is no scheduler on the host, so reminders are a date plus a list that staf
 - On each row: **Done** (clears it; a new lead becomes Contacted), **+1 day**, **+3 days**. Open the lead or quotation to set an exact date and action, or +1 week.
 - A follow-up is cleared automatically when a quotation is accepted, declined or cancelled, and when a lead is marked Won or Lost.
 - Quotation follow-up changes are written to its history.
+
+## Saved offers (quotation templates)
+A saved offer is a plan, price, billing period, VAT setting, wording and once-off lines you quote often, for example "Starter, 10 branches, standard set-up".
+- **Create:** Quotations > Saved offers > New saved offer, or open any quotation and use **Save as offer** (the client's details are never saved).
+- **Use:** when starting a quotation, or from a lead, click the offer. The whole form is filled in, including the lead's contact details and a valid-until date; change anything before saving.
+- Each offer can set how many days its quotations stay open (empty uses `QUOTE_VALID_DAYS`). Untick **Show in the list** to hide an offer without deleting it.
+- Editing or deleting an offer never changes quotations already made from it.
