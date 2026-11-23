@@ -92,6 +92,9 @@ def send(quote: Quote, user=None) -> None:
     quote.sent_at = timezone.now()
     quote.save(update_fields=["status", "sent_at"])
     record(quote, "resent" if resent else "sent", f"to {quote.email}", _staff_name(user))
+    quote.follow_up_on = timezone.localdate() + timedelta(days=settings.QUOTE_FOLLOW_UP_DAYS)
+    quote.next_action = f"Follow up on quotation {quote.number}"
+    quote.save(update_fields=["follow_up_on", "next_action"])
     if quote.lead_id and quote.lead.status in (Lead.Status.NEW, Lead.Status.CONTACTED, Lead.Status.DEMO):
         quote.lead.status = Lead.Status.QUOTED
         quote.lead.save(update_fields=["status"])
@@ -181,10 +184,11 @@ def accept(quote: Quote, *, name: str) -> Subscription:
     quote.decision_by = name[:120]
     quote.terms_version = settings.SUBSCRIPTION_TERMS_VERSION
     quote.subscription = subscription
+    quote.follow_up_on, quote.next_action = None, ""
     quote.save()
     record(quote, "accepted", f"by {name}", "client")
     if quote.lead_id:
-        Lead.objects.filter(pk=quote.lead_id).update(status=Lead.Status.WON)
+        Lead.objects.filter(pk=quote.lead_id).update(status=Lead.Status.WON, follow_up_on=None, next_action="")
     pay_link = f"{settings.SITE_URL}{reverse('billing:pay', args=[subscription.reference])}"
     _mail(
         f"Quotation accepted: {quote.business_name}",
@@ -207,10 +211,13 @@ def decline(quote: Quote, *, reason: str = "") -> None:
     quote.status = Quote.Status.DECLINED
     quote.decided_at = timezone.now()
     quote.decision_note = reason[:300]
-    quote.save(update_fields=["status", "decided_at", "decision_note"])
+    quote.follow_up_on, quote.next_action = None, ""
+    quote.save(update_fields=["status", "decided_at", "decision_note", "follow_up_on", "next_action"])
     record(quote, "declined", reason, "client")
     if quote.lead_id:
-        Lead.objects.filter(pk=quote.lead_id, status=Lead.Status.QUOTED).update(status=Lead.Status.LOST)
+        Lead.objects.filter(pk=quote.lead_id, status=Lead.Status.QUOTED).update(
+            status=Lead.Status.LOST, follow_up_on=None, next_action=""
+        )
     _mail(
         f"Quotation declined: {quote.business_name}",
         "emails/quote_declined_staff.txt",
@@ -223,7 +230,8 @@ def cancel(quote: Quote, user=None) -> None:
     if quote.status not in (Quote.Status.DRAFT, Quote.Status.SENT):
         raise QuoteError("Only a draft or sent quotation can be cancelled.")
     quote.status = Quote.Status.CANCELLED
-    quote.save(update_fields=["status"])
+    quote.follow_up_on, quote.next_action = None, ""
+    quote.save(update_fields=["status", "follow_up_on", "next_action"])
     record(quote, "cancelled", actor=_staff_name(user))
 
 

@@ -10,6 +10,8 @@ from billing.models import Refund, Subscription, SubscriptionEvent
 from leads.models import Lead
 from quotes.models import Quote, QuoteEvent
 
+from . import followups
+
 Status = Subscription.Status
 
 
@@ -43,6 +45,7 @@ def dashboard() -> dict:
     activity.sort(key=lambda row: row["when"], reverse=True)
     counts = {row["status"]: row["n"] for row in Subscription.objects.values("status").annotate(n=Count("id"))}
     return {
+        "follow_ups": followups.collect(today),
         "new_leads": Lead.objects.filter(status=Lead.Status.NEW).count(),
         "leads_30d": Lead.objects.filter(created_at__gte=now - timedelta(days=30)).count(),
         "draft_quotes": Quote.objects.filter(status=Quote.Status.DRAFT).count(),

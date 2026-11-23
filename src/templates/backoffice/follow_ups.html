@@ -1,0 +1,12 @@
+{% extends "backoffice/base.html" %}
+{% block staff %}
+<h1 class="h-section">Follow-ups</h1>
+<p class="mt-2 text-sm text-slate-600">Leads and quotations that need someone to get in touch. Nothing is e-mailed: open this list each day.</p>
+{% with next=request.path %}
+{% if buckets.overdue %}<section class="card mt-6 border-red-200"><h2 class="text-lg font-bold text-red-800">Overdue ({{ buckets.overdue|length }})</h2><ul class="mt-2 divide-y divide-line">{% for i in buckets.overdue %}{% include "backoffice/_followup_row.html" %}{% endfor %}</ul></section>{% endif %}
+<section class="card mt-6"><h2 class="text-lg font-bold">Today ({{ buckets.today|length }})</h2><ul class="mt-2 divide-y divide-line">{% for i in buckets.today %}{% include "backoffice/_followup_row.html" %}{% empty %}<li class="py-3 text-sm text-slate-500">Nothing else is due today.</li>{% endfor %}</ul></section>
+{% if buckets.soon %}<section class="card mt-6"><h2 class="text-lg font-bold">Next 7 days ({{ buckets.soon|length }})</h2><ul class="mt-2 divide-y divide-line">{% for i in buckets.soon %}{% include "backoffice/_followup_row.html" %}{% endfor %}</ul></section>{% endif %}
+{% if buckets.undated %}<section class="card mt-6 border-amber-200"><h2 class="text-lg font-bold text-amber-800">No follow-up date ({{ buckets.undated|length }})</h2><p class="mt-1 text-sm text-slate-600">Open leads and sent quotations with nothing scheduled. Open one to set a date.</p><ul class="mt-2 divide-y divide-line">{% for i in buckets.undated %}{% include "backoffice/_followup_row.html" %}{% endfor %}</ul></section>{% endif %}
+{% if buckets.later %}<section class="card mt-6"><h2 class="text-lg font-bold">Later ({{ buckets.later|length }})</h2><ul class="mt-2 divide-y divide-line">{% for i in buckets.later %}{% include "backoffice/_followup_row.html" %}{% endfor %}</ul></section>{% endif %}
+{% endwith %}
+{% endblock %}

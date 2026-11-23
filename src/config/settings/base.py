@@ -166,6 +166,9 @@ REFUND_WINDOW_DAYS = env.int(
 VAT_RATE = env.float("VAT_RATE", default=0.15)
 VAT_NUMBER = env("VAT_NUMBER", default="")
 QUOTE_VALID_DAYS = env.int("QUOTE_VALID_DAYS", default=30)
+QUOTE_FOLLOW_UP_DAYS = env.int(
+    "QUOTE_FOLLOW_UP_DAYS", default=3
+)  # a sent quotation is due for a chase this many days later
 # The staff back-office address. Like ADMIN_URL, set it to something only your team knows: nothing on the public site links to it.
 STAFF_URL = env("STAFF_URL", default="staff/").strip("/") + "/"
 STAFF_LOGIN_URL = f"/{STAFF_URL}login/"

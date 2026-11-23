@@ -8,14 +8,20 @@
   <a class="card block hover:border-brand" href="{% url 'backoffice:refunds' %}"><p class="text-sm text-slate-500">Refunds waiting</p><p class="mt-1 text-3xl font-bold {% if stats.refunds_waiting %}text-amber-700{% endif %}">{{ stats.refunds_waiting }}</p><p class="text-xs text-slate-500">need a decision</p></a>
 </div>
 
-<div class="mt-8 grid gap-6 lg:grid-cols-3">
+<section class="card mt-8 {% if stats.follow_ups.overdue %}border-red-200{% endif %}"><div class="flex flex-wrap items-baseline justify-between gap-2"><h2 class="text-lg font-bold">Today{% if stats.follow_ups.due_count %} <span class="text-slate-500">· {{ stats.follow_ups.due_count }} to do</span>{% endif %}</h2><a class="text-sm font-semibold text-brand-dark underline" href="{% url 'backoffice:follow_ups' %}">All follow-ups{% if stats.follow_ups.undated %} ({{ stats.follow_ups.undated|length }} without a date){% endif %}</a></div>
+  {% with next=request.path %}<ul class="mt-2 divide-y divide-line">
+    {% for i in stats.follow_ups.overdue %}{% include "backoffice/_followup_row.html" %}{% endfor %}
+    {% for i in stats.follow_ups.today %}{% include "backoffice/_followup_row.html" %}{% endfor %}
+    {% if not stats.follow_ups.due_count %}<li class="py-3 text-sm text-slate-500">Nothing is due. {% if stats.follow_ups.soon %}Next up: {{ stats.follow_ups.soon.0.title }} ({{ stats.follow_ups.soon.0.when|lower }}).{% endif %}</li>{% endif %}
+  </ul>{% endwith %}</section>
+
+<div class="mt-6 grid gap-6 lg:grid-cols-3">
   <section class="card lg:col-span-2"><h2 class="text-lg font-bold">Needs attention</h2>
     <ul class="mt-3 divide-y divide-line text-sm">
       {% for q in stats.expiring_quotes %}<li class="flex justify-between py-2"><a class="font-semibold text-brand-dark underline" href="{% url 'backoffice:quote' q.pk %}">{{ q.number }} · {{ q.business_name }}</a><span class="text-amber-800">expires {{ q.valid_until|date:"j M" }}</span></li>{% endfor %}
-      {% for q in stats.stale_quotes %}<li class="flex justify-between py-2"><a class="font-semibold text-brand-dark underline" href="{% url 'backoffice:quote' q.pk %}">{{ q.number }} · {{ q.business_name }}</a><span class="text-slate-600">sent {{ q.sent_at|date:"j M" }}, no reply: follow up</span></li>{% endfor %}
       {% if stats.accepted_unpaid %}<li class="flex justify-between py-2"><a class="font-semibold text-brand-dark underline" href="{% url 'backoffice:subscriptions' %}?status=pending">Accepted, first payment not received</a><span>{{ stats.accepted_unpaid }}</span></li>{% endif %}
       {% if stats.new_leads %}<li class="flex justify-between py-2"><a class="font-semibold text-brand-dark underline" href="{% url 'backoffice:leads' %}?status=new">New leads to contact</a><span>{{ stats.new_leads }}</span></li>{% endif %}
-      {% if not stats.expiring_quotes and not stats.stale_quotes and not stats.accepted_unpaid and not stats.new_leads %}<li class="py-2 text-slate-500">Nothing needs attention right now.</li>{% endif %}
+      {% if not stats.expiring_quotes and not stats.accepted_unpaid and not stats.new_leads %}<li class="py-2 text-slate-500">Nothing needs attention right now.</li>{% endif %}
     </ul></section>
   <section class="card"><h2 class="text-lg font-bold">Subscriptions</h2>
     <dl class="mt-3 space-y-2 text-sm">{% for label, n in stats.subscriptions.items %}<div class="flex justify-between"><dt class="text-slate-600">{{ label }}</dt><dd class="font-semibold">{{ n }}</dd></div>{% endfor %}</dl></section>

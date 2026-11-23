@@ -1,0 +1,15 @@
+{% load staff_ui %}{% comment %}One follow-up. Needs: i (an item from followups.collect), next (where to return to).{% endcomment %}
+<li class="flex flex-wrap items-center justify-between gap-3 py-3">
+  <div class="min-w-0">
+    <a class="font-semibold text-brand-dark underline" href="{{ i.url }}">{{ i.title }}</a>
+    <span class="ml-1 text-xs text-slate-500">{{ i.kind|title }} · {{ i.status }}</span>
+    <p class="text-sm text-slate-600">{{ i.action }}</p>
+  </div>
+  <form method="post" action="{% url 'backoffice:follow_up' i.kind i.pk %}" class="flex flex-wrap items-center gap-2">{% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    {% include "backoffice/_badge.html" with label=i.when tone=i.tone %}
+    <button class="btn-outline btn-sm" type="submit" name="action" value="done">Done</button>
+    <button class="btn-outline btn-sm" type="submit" name="action" value="snooze:1" title="Remind me tomorrow">+1 day</button>
+    <button class="btn-outline btn-sm" type="submit" name="action" value="snooze:3" title="Remind me in three days">+3 days</button>
+  </form>
+</li>

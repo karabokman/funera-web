@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 
 
 class Lead(models.Model):
@@ -50,6 +51,10 @@ class Lead(models.Model):
     status = models.CharField(max_length=12, choices=Status.choices, default=Status.NEW, db_index=True)
     internal_notes = models.TextField(blank=True)
     contacted_at = models.DateTimeField(null=True, blank=True)
+    follow_up_on = models.DateField(
+        null=True, blank=True, db_index=True, help_text="The day someone should next get in touch."
+    )
+    next_action = models.CharField(max_length=200, blank=True, help_text="What to do on that day.")
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
@@ -57,3 +62,9 @@ class Lead(models.Model):
 
     def __str__(self) -> str:
         return f"{self.business_name} ({self.name})"
+
+    def save(self, *args, **kwargs):
+        if self._state.adding and self.follow_up_on is None and self.status == self.Status.NEW:
+            self.follow_up_on = timezone.localdate()  # a new enquiry is due for first contact today
+            self.next_action = self.next_action or "Make first contact"
+        super().save(*args, **kwargs)

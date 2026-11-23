@@ -54,6 +54,10 @@ class Quote(models.Model):
     valid_until = models.DateField()
     intro = models.TextField(blank=True, help_text="A short note shown at the top of the quotation.")
     internal_notes = models.TextField(blank=True, help_text="Never shown to the client.")
+    follow_up_on = models.DateField(
+        null=True, blank=True, db_index=True, help_text="The day someone should next chase this quotation."
+    )
+    next_action = models.CharField(max_length=200, blank=True, help_text="What to do on that day.")
 
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"

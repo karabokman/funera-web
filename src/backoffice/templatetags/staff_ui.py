@@ -1,5 +1,7 @@
 from django import template
 
+from backoffice import followups
+
 register = template.Library()
 
 TONES = {
@@ -18,3 +20,9 @@ TONES = {
 def tone(status) -> str:
     """The badge colour for a status value (see ``_badge.html``)."""
     return TONES.get(str(status).lower(), "neutral")
+
+
+@register.simple_tag
+def follow_up_badge() -> int:
+    """How many follow-ups are due today or overdue, for the navigation."""
+    return followups.due_count()

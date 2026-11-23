@@ -29,3 +29,11 @@ Staff can also pause, resume and cancel subscriptions, raise refunds and process
 
 ## E-mail
 Set `EMAIL_BACKEND`, `EMAIL_HOST` and the other `EMAIL_*` values in `.env`. In development, leave them out and messages print in the terminal. An SMTP backend with an empty `EMAIL_HOST` falls back to the terminal in development, and production refuses to start in that state.
+
+## Follow-up reminders
+There is no scheduler on the host, so reminders are a date plus a list that staff open each day.
+- Every lead and quotation can carry a **follow-up date** and a **next action**. A new enquiry is due for first contact the day it arrives; a quotation is due for a chase `QUOTE_FOLLOW_UP_DAYS` (3) days after it is sent.
+- The dashboard **Today** list shows what is overdue or due today; the nav badge counts the same. **Follow-ups** shows everything: overdue, today, the next 7 days, later, and open leads or sent quotations with **no date** (so nothing hides).
+- On each row: **Done** (clears it; a new lead becomes Contacted), **+1 day**, **+3 days**. Open the lead or quotation to set an exact date and action, or +1 week.
+- A follow-up is cleared automatically when a quotation is accepted, declined or cancelled, and when a lead is marked Won or Lost.
+- Quotation follow-up changes are written to its history.

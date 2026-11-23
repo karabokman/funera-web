@@ -3,13 +3,14 @@
 <h1 class="h-section">Leads</h1>
 <div class="mt-6">{% include "backoffice/_filters.html" %}</div>
 <div class="overflow-x-auto rounded-2xl border border-line bg-white"><table class="w-full text-left text-sm">
-  <thead class="border-b border-line text-xs uppercase tracking-wide text-slate-500"><tr><th class="p-3">Received</th><th class="p-3">Business</th><th class="p-3">Contact</th><th class="p-3">Size</th><th class="p-3">Interested in</th><th class="p-3">Status</th></tr></thead>
+  <thead class="border-b border-line text-xs uppercase tracking-wide text-slate-500"><tr><th class="p-3">Received</th><th class="p-3">Business</th><th class="p-3">Contact</th><th class="p-3">Size</th><th class="p-3">Interested in</th><th class="p-3">Follow-up</th><th class="p-3">Status</th></tr></thead>
   <tbody class="divide-y divide-line">{% for lead in page %}<tr class="hover:bg-paper">
     <td class="p-3 text-slate-600">{{ lead.created_at|date:"j M Y" }}</td>
     <td class="p-3"><a class="font-semibold text-brand-dark underline" href="{% url 'backoffice:lead' lead.pk %}">{{ lead.business_name }}</a></td>
     <td class="p-3">{{ lead.name }}<br><span class="text-slate-500">{{ lead.email }}</span></td>
     <td class="p-3">{{ lead.get_member_count_display }}</td><td class="p-3">{{ lead.plan_interest|default:"—" }}</td>
+    <td class="p-3 text-slate-600">{% if lead.follow_up_on %}{{ lead.follow_up_on|date:"j M" }}{% else %}—{% endif %}</td>
     <td class="p-3">{% include "backoffice/_badge.html" with label=lead.get_status_display tone=lead.status|tone %}</td></tr>
-  {% empty %}<tr><td colspan="6" class="p-6 text-center text-slate-500">No leads match.</td></tr>{% endfor %}</tbody></table></div>
+  {% empty %}<tr><td colspan="7" class="p-6 text-center text-slate-500">No leads match.</td></tr>{% endfor %}</tbody></table></div>
 {% include "backoffice/_pagination.html" %}
 {% endblock %}

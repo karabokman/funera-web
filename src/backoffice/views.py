@@ -7,9 +7,11 @@ from django.contrib import messages
 from django.contrib.auth.views import LoginView, LogoutView
 from django.core.paginator import Paginator
 from django.db.models import Q
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views import View
 from django.views.generic import FormView, TemplateView
 
@@ -25,8 +27,8 @@ from quotes.forms import QuoteForm, QuoteLineFormSet
 from quotes.models import Quote
 from quotes.views import pdf_response
 
-from . import stats
-from .forms import LeadUpdateForm
+from . import followups, stats
+from .forms import FollowUpForm, LeadUpdateForm
 from .mixins import StaffRequiredMixin
 
 logger = logging.getLogger(__name__)
@@ -112,6 +114,8 @@ class LeadDetailView(StaffRequiredMixin, FormView):
         lead = form.save(commit=False)
         if lead.status != Lead.Status.NEW and lead.contacted_at is None:
             lead.contacted_at = timezone.now()
+        if lead.status in (Lead.Status.WON, Lead.Status.LOST):
+            followups.clear(lead)  # nothing left to chase
         lead.save()
         messages.success(self.request, "Lead updated.")
         return redirect("backoffice:lead", pk=lead.pk)
@@ -120,6 +124,9 @@ class LeadDetailView(StaffRequiredMixin, FormView):
         return super().get_context_data(
             page_title=self.lead.business_name,
             lead=self.lead,
+            follow_up_form=FollowUpForm(
+                initial={"follow_up_on": self.lead.follow_up_on, "next_action": self.lead.next_action}
+            ),
             quotes=self.lead.quotes.all(),
             plans=Plan.objects.filter(is_active=True),
             **kwargs,
@@ -221,6 +228,7 @@ class QuoteDetailView(StaffPage):
             lines=quote.lines.all(),
             events=quote.events.all()[:15],
             public_url=quote_services.public_url(quote),
+            follow_up_form=FollowUpForm(initial={"follow_up_on": quote.follow_up_on, "next_action": quote.next_action}),
             **kwargs,
         )
 
@@ -441,3 +449,60 @@ class QuotePdf(StaffRequiredMixin, View):
 
     def get(self, request, pk):
         return pdf_response(get_object_or_404(Quote, pk=pk))
+
+
+# ------------------------------------------------------------------------------------------------ follow-ups
+class FollowUpsView(StaffPage):
+    template_name = "backoffice/follow_ups.html"
+    title = "Follow-ups"
+
+    def get_context_data(self, **kwargs):
+        return super().get_context_data(buckets=followups.collect(), **kwargs)
+
+
+class FollowUpAction(StaffRequiredMixin, View):
+    """Set, snooze or complete the follow-up on a lead or quotation. POST only."""
+
+    http_method_names = ["post"]
+
+    def post(self, request, kind, pk):
+        model = followups.KINDS.get(kind)
+        if model is None:
+            raise Http404
+        obj = get_object_or_404(model, pk=pk)
+        action = request.POST.get("action", "")
+        target = request.POST.get("next", "")
+        if not url_has_allowed_host_and_scheme(
+            target, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+        ):
+            target = reverse("backoffice:lead" if kind == "lead" else "backoffice:quote", args=[obj.pk])
+        if (
+            kind == "quote"
+            and obj.status not in followups.OPEN_QUOTE
+            or kind == "lead"
+            and obj.status not in followups.OPEN_LEAD
+        ):
+            messages.error(request, "This item is closed, so there is nothing to follow up.")
+            return redirect(target)
+        try:
+            if action == "set":
+                form = FollowUpForm(request.POST)
+                if not form.is_valid():
+                    messages.error(request, "Enter a valid date.")
+                    return redirect(target)
+                data = form.cleaned_data
+                message = followups.apply(
+                    kind,
+                    obj,
+                    action="set",
+                    user=request.user,
+                    follow_up_on=data["follow_up_on"],
+                    next_action=data["next_action"],
+                )
+            else:
+                message = followups.apply(kind, obj, action=action, user=request.user)
+        except ValueError:
+            messages.error(request, "That follow-up action is not recognised.")
+            return redirect(target)
+        messages.success(request, message)
+        return redirect(target)

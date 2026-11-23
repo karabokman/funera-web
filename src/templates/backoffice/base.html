@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% load static %}
+{% extends "base.html" %}{% load static staff_ui %}
 {% block robots %}<meta name="robots" content="noindex, nofollow">{% endblock %}
 {% block site_header %}
 <header class="border-b border-line bg-white print:hidden">
@@ -8,6 +8,7 @@
     <nav class="flex flex-1 flex-wrap items-center gap-1 text-sm" aria-label="Back-office">
       {% with name=request.resolver_match.url_name %}
       <a class="nav-link {% if name == 'dashboard' %}!bg-brand-soft !text-brand-dark{% endif %}" href="{% url 'backoffice:dashboard' %}">Dashboard</a>
+      <a class="nav-link {% if name == 'follow_ups' %}!bg-brand-soft !text-brand-dark{% endif %}" href="{% url 'backoffice:follow_ups' %}">Follow-ups{% follow_up_badge as due %}{% if due %} <span class="ml-1 rounded-full bg-red-600 px-1.5 py-0.5 text-xs font-bold text-white" aria-label="{{ due }} due">{{ due }}</span>{% endif %}</a>
       <a class="nav-link {% if name == 'leads' or name == 'lead' %}!bg-brand-soft !text-brand-dark{% endif %}" href="{% url 'backoffice:leads' %}">Leads</a>
       <a class="nav-link {% if 'quote' in name %}!bg-brand-soft !text-brand-dark{% endif %}" href="{% url 'backoffice:quotes' %}">Quotations</a>
       <a class="nav-link {% if 'customer' in name %}!bg-brand-soft !text-brand-dark{% endif %}" href="{% url 'backoffice:customers' %}">Customers</a>
