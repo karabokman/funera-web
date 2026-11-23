@@ -2,6 +2,9 @@ from django.conf import settings
 from django.contrib import admin
 from django.urls import include, path
 
+from backoffice.admin_site import restrict_to_superusers
+
+restrict_to_superusers(admin.site)
 admin.site.site_header = "Funera website admin"
 admin.site.site_title = "Funera admin"
 admin.site.index_title = "Enquiries and plans"

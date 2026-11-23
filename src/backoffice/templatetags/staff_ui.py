@@ -1,6 +1,6 @@
 from django import template
 
-from backoffice import followups
+from backoffice import followups, roles
 
 register = template.Library()
 
@@ -26,3 +26,14 @@ def tone(status) -> str:
 def follow_up_badge() -> int:
     """How many follow-ups are due today or overdue, for the navigation."""
     return followups.due_count()
+
+
+@register.filter
+def is_admin(user) -> bool:
+    """True for the Admin role (superuser or the Funera Admin group)."""
+    return roles.is_admin(user)
+
+
+@register.filter
+def role_name(user) -> str:
+    return roles.role(user)

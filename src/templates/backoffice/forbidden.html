@@ -1,0 +1,6 @@
+{% extends "backoffice/base.html" %}
+{% block staff %}
+<div class="mx-auto max-w-xl py-12 text-center"><h1 class="h-section">Administrators only</h1>
+  <p class="mt-3 text-slate-600">Your account can work leads, follow-ups, quotations and customers. This page, or this action, is limited to administrators because it moves money or changes prices. Ask an administrator to do it, or to change your role.</p>
+  <p class="mt-6"><a class="btn-primary" href="{% url 'backoffice:dashboard' %}">Back to the dashboard</a></p></div>
+{% endblock %}

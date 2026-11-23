@@ -1,11 +1,13 @@
-{% extends "backoffice/base.html" %}
+{% extends "backoffice/base.html" %}{% load staff_ui %}
 {% block staff %}
 <h1 class="h-section">Dashboard</h1>
-<div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+<div class="mt-6 grid gap-4 sm:grid-cols-2 {% if request.user|is_admin %}lg:grid-cols-4{% endif %}">
   <a class="card block hover:border-brand" href="{% url 'backoffice:leads' %}?status=new"><p class="text-sm text-slate-500">New leads</p><p class="mt-1 text-3xl font-bold">{{ stats.new_leads }}</p><p class="text-xs text-slate-500">{{ stats.leads_30d }} in the last 30 days</p></a>
-  <a class="card block hover:border-brand" href="{% url 'backoffice:quotes' %}?status=sent"><p class="text-sm text-slate-500">Quotations out</p><p class="mt-1 text-3xl font-bold">{{ stats.open_quotes }}</p><p class="text-xs text-slate-500">worth R{{ stats.open_quote_value|floatformat:"0g" }} a month · {{ stats.draft_quotes }} draft{{ stats.draft_quotes|pluralize }}</p></a>
+  <a class="card block hover:border-brand" href="{% url 'backoffice:quotes' %}?status=sent"><p class="text-sm text-slate-500">Quotations out</p><p class="mt-1 text-3xl font-bold">{{ stats.open_quotes }}</p><p class="text-xs text-slate-500">{% if request.user|is_admin %}worth R{{ stats.open_quote_value|floatformat:"0g" }} a month · {% endif %}{{ stats.draft_quotes }} draft{{ stats.draft_quotes|pluralize }}</p></a>
+  {% if request.user|is_admin %}
   <a class="card block hover:border-brand" href="{% url 'backoffice:subscriptions' %}?status=active"><p class="text-sm text-slate-500">Monthly recurring revenue</p><p class="mt-1 text-3xl font-bold">R{{ stats.mrr|floatformat:"0g" }}</p><p class="text-xs text-slate-500">as charged; annual plans count 1/12</p></a>
   <a class="card block hover:border-brand" href="{% url 'backoffice:refunds' %}"><p class="text-sm text-slate-500">Refunds waiting</p><p class="mt-1 text-3xl font-bold {% if stats.refunds_waiting %}text-amber-700{% endif %}">{{ stats.refunds_waiting }}</p><p class="text-xs text-slate-500">need a decision</p></a>
+  {% endif %}
 </div>
 
 <section class="card mt-8 {% if stats.follow_ups.overdue %}border-red-200{% endif %}"><div class="flex flex-wrap items-baseline justify-between gap-2"><h2 class="text-lg font-bold">Today{% if stats.follow_ups.due_count %} <span class="text-slate-500">· {{ stats.follow_ups.due_count }} to do</span>{% endif %}</h2><a class="text-sm font-semibold text-brand-dark underline" href="{% url 'backoffice:follow_ups' %}">All follow-ups{% if stats.follow_ups.undated %} ({{ stats.follow_ups.undated|length }} without a date){% endif %}</a></div>

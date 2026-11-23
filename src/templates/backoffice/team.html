@@ -1,0 +1,15 @@
+{% extends "backoffice/base.html" %}{% load staff_ui %}
+{% block staff %}
+<h1 class="h-section">Team</h1>
+<p class="mt-2 text-sm text-slate-600">Everyone who can sign in to the back-office. <strong>Admin</strong> can do everything. <strong>Sales</strong> can work leads, follow-ups, quotations and customers, but cannot refund, pause or cancel subscriptions, edit saved offers or see revenue totals.</p>
+<div class="mt-6 overflow-x-auto rounded-2xl border border-line bg-white"><table class="w-full text-left text-sm">
+  <thead class="border-b border-line text-xs uppercase tracking-wide text-slate-500"><tr><th class="p-3">User</th><th class="p-3">E-mail</th><th class="p-3">Role</th><th class="p-3">Last sign-in</th><th class="p-3">Account</th></tr></thead>
+  <tbody class="divide-y divide-line">{% for m in members %}<tr>
+    <td class="p-3 font-semibold">{{ m.user.get_username }}{% if m.user.get_full_name %}<br><span class="font-normal text-slate-500">{{ m.user.get_full_name }}</span>{% endif %}</td>
+    <td class="p-3">{{ m.user.email|default:"—" }}</td>
+    <td class="p-3">{% include "backoffice/_badge.html" with label=m.role tone=m.role|yesno:"info,info" %}{% if m.user.is_superuser %} <span class="text-xs text-slate-500">superuser</span>{% endif %}</td>
+    <td class="p-3 text-slate-600">{{ m.user.last_login|date:"j M Y H:i"|default:"never" }}</td>
+    <td class="p-3">{% include "backoffice/_badge.html" with label=m.user.is_active|yesno:"Active,Disabled" tone=m.user.is_active|yesno:"good,bad" %}</td></tr>{% endfor %}</tbody></table></div>
+<section class="card mt-6"><h2 class="text-lg font-bold">Changing someone's role</h2>
+  <p class="mt-2 text-sm text-slate-600">Only a superuser can do this, in the site admin: open the user, tick <em>Staff status</em> so they can sign in, and add them to the group <strong>{{ admin_group }}</strong> to make them an Admin. Remove the group to make them Sales. Untick <em>Active</em> to switch an account off. Only superusers can open the site admin.</p></section>
+{% endblock %}

@@ -1,4 +1,4 @@
-{% extends "base.html" %}{% load static staff_ui %}
+{% extends "base.html" %}{% load staff_ui %}{% load static staff_ui %}
 {% block robots %}<meta name="robots" content="noindex, nofollow">{% endblock %}
 {% block site_header %}
 <header class="border-b border-line bg-white print:hidden">
@@ -13,12 +13,13 @@
       <a class="nav-link {% if 'quote' in name or 'offer' in name %}!bg-brand-soft !text-brand-dark{% endif %}" href="{% url 'backoffice:quotes' %}">Quotations</a>
       <a class="nav-link {% if 'customer' in name %}!bg-brand-soft !text-brand-dark{% endif %}" href="{% url 'backoffice:customers' %}">Customers</a>
       <a class="nav-link {% if 'subscription' in name %}!bg-brand-soft !text-brand-dark{% endif %}" href="{% url 'backoffice:subscriptions' %}">Subscriptions</a>
-      <a class="nav-link {% if 'refund' in name %}!bg-brand-soft !text-brand-dark{% endif %}" href="{% url 'backoffice:refunds' %}">Refunds</a>
+      {% if request.user|is_admin %}<a class="nav-link {% if 'refund' in name %}!bg-brand-soft !text-brand-dark{% endif %}" href="{% url 'backoffice:refunds' %}">Refunds</a>
+      <a class="nav-link {% if name == 'team' %}!bg-brand-soft !text-brand-dark{% endif %}" href="{% url 'backoffice:team' %}">Team</a>{% endif %}
       {% endwith %}
     </nav>
     <div class="flex items-center gap-3 text-sm">
       {% if request.user.is_superuser %}<a class="nav-link" href="{{ site.admin_path }}">Site admin</a>{% endif %}
-      <span class="hidden text-slate-500 sm:inline">{{ request.user.get_username }}</span>
+      <span class="hidden text-slate-500 sm:inline">{{ request.user.get_username }} · {{ request.user|role_name }}</span>
       <form method="post" action="{% url 'backoffice:logout' %}">{% csrf_token %}<button type="submit" class="btn-outline btn-sm">Sign out</button></form>
     </div>
     {% endif %}

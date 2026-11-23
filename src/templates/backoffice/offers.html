@@ -1,15 +1,15 @@
 {% extends "backoffice/base.html" %}{% load staff_ui %}
 {% block staff %}
-<div class="flex flex-wrap items-center justify-between gap-3"><h1 class="h-section">Saved offers</h1><a class="btn-primary" href="{% url 'backoffice:offer_new' %}">New saved offer</a></div>
+<div class="flex flex-wrap items-center justify-between gap-3"><h1 class="h-section">Saved offers</h1>{% if request.user|is_admin %}<a class="btn-primary" href="{% url 'backoffice:offer_new' %}">New saved offer</a>{% endif %}</div>
 <p class="mt-2 text-sm text-slate-600">A saved offer is a plan, price and set of once-off lines you quote often. Pick one when you start a quotation and everything is filled in; you can still change any figure.</p>
 <div class="mt-6 overflow-x-auto rounded-2xl border border-line bg-white"><table class="w-full text-left text-sm">
   <thead class="border-b border-line text-xs uppercase tracking-wide text-slate-500"><tr><th class="p-3">Name</th><th class="p-3">Plan</th><th class="p-3 text-right">Recurring</th><th class="p-3 text-right">Once-off</th><th class="p-3">Shown</th><th class="p-3"></th></tr></thead>
   <tbody class="divide-y divide-line">{% for o in offers %}<tr class="hover:bg-paper">
-    <td class="p-3"><a class="font-semibold text-brand-dark underline" href="{% url 'backoffice:offer_edit' o.pk %}">{{ o.name }}</a>{% if o.description %}<br><span class="text-slate-500">{{ o.description }}</span>{% endif %}</td>
+    <td class="p-3">{% if request.user|is_admin %}<a class="font-semibold text-brand-dark underline" href="{% url 'backoffice:offer_edit' o.pk %}">{{ o.name }}</a>{% else %}<span class="font-semibold">{{ o.name }}</span>{% endif %}{% if o.description %}<br><span class="text-slate-500">{{ o.description }}</span>{% endif %}</td>
     <td class="p-3">{{ o.plan.name }} · {{ o.get_billing_period_display|lower }}</td>
     <td class="p-3 text-right">R{{ o.recurring_price|floatformat:"2g" }}</td>
     <td class="p-3 text-right">{% if o.once_off_total %}R{{ o.once_off_total|floatformat:"2g" }}{% else %}—{% endif %}</td>
     <td class="p-3">{% include "backoffice/_badge.html" with label=o.is_active|yesno:"Yes,Hidden" tone=o.is_active|yesno:"good,neutral" %}</td>
     <td class="p-3 text-right"><a class="btn-outline btn-sm" href="{% url 'backoffice:quote_new' %}?offer={{ o.pk }}">Use</a></td></tr>
-  {% empty %}<tr><td colspan="6" class="p-6 text-center text-slate-500">None yet. Create one here, or open any quotation and choose "Save as offer".</td></tr>{% endfor %}</tbody></table></div>
+  {% empty %}<tr><td colspan="6" class="p-6 text-center text-slate-500">None yet.{% if request.user|is_admin %} Create one here, or open any quotation and choose "Save as offer".{% endif %}</td></tr>{% endfor %}</tbody></table></div>
 {% endblock %}

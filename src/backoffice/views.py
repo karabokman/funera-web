@@ -4,6 +4,7 @@ functions the client portal and the website use, so staff and clients are held t
 import logging
 
 from django.contrib import messages
+from django.contrib.auth import get_user_model
 from django.contrib.auth.views import LoginView, LogoutView
 from django.core.paginator import Paginator
 from django.db.models import Q
@@ -27,9 +28,9 @@ from quotes.forms import OfferForm, OfferLineFormSet, QuoteForm, QuoteLineFormSe
 from quotes.models import Quote, QuoteTemplate
 from quotes.views import pdf_response
 
-from . import followups, stats
+from . import followups, roles, stats
 from .forms import FollowUpForm, LeadUpdateForm
-from .mixins import StaffRequiredMixin
+from .mixins import AdminRequiredMixin, StaffRequiredMixin
 
 logger = logging.getLogger(__name__)
 STAFF = "staff"
@@ -74,7 +75,7 @@ class DashboardView(StaffPage):
     title = "Dashboard"
 
     def get_context_data(self, **kwargs):
-        return super().get_context_data(stats=stats.dashboard(), **kwargs)
+        return super().get_context_data(stats=stats.dashboard(money=roles.is_admin(self.request.user)), **kwargs)
 
 
 # ------------------------------------------------------------------------------------------------ leads
@@ -355,7 +356,7 @@ class SubscriptionDetailView(StaffPage):
         )  # fmt: skip
 
 
-class SubscriptionAction(StaffRequiredMixin, View):
+class SubscriptionAction(AdminRequiredMixin, View):
     """POST-only buttons. PayFast is asked first; if it cannot confirm, the staff member is told and nothing changes."""
 
     http_method_names = ["post"]
@@ -415,7 +416,7 @@ class RefundRaise(SubscriptionAction):
         refunds.request_refund(payment, form.cleaned_data["reason"], actor=STAFF)
 
 
-class RefundListView(StaffPage):
+class RefundListView(AdminRequiredMixin, StaffPage):
     template_name = "backoffice/refunds.html"
     title = "Refunds"
 
@@ -429,7 +430,7 @@ class RefundListView(StaffPage):
         )
 
 
-class RefundAction(StaffRequiredMixin, View):
+class RefundAction(AdminRequiredMixin, View):
     http_method_names = ["post"]
 
     def post(self, request, pk, action):
@@ -527,7 +528,7 @@ class OfferListView(StaffPage):
         return super().get_context_data(offers=offers, **kwargs)
 
 
-class OfferEditView(StaffRequiredMixin, TemplateView):
+class OfferEditView(AdminRequiredMixin, TemplateView):
     """Create or edit a saved offer; the header form and its once-off lines are saved together."""
 
     template_name = "backoffice/offer_form.html"
@@ -567,7 +568,7 @@ class OfferEditView(StaffRequiredMixin, TemplateView):
         return self.render_to_response(self.get_context_data(form_pair=(form, lines)))
 
 
-class OfferDelete(StaffRequiredMixin, View):
+class OfferDelete(AdminRequiredMixin, View):
     http_method_names = ["post"]
 
     def post(self, request, pk):
@@ -578,7 +579,7 @@ class OfferDelete(StaffRequiredMixin, View):
         return redirect("backoffice:offers")
 
 
-class QuoteSaveAsOffer(StaffRequiredMixin, View):
+class QuoteSaveAsOffer(AdminRequiredMixin, View):
     """Keep this quotation's plan, price, wording and lines as a saved offer."""
 
     http_method_names = ["post"]
@@ -592,3 +593,19 @@ class QuoteSaveAsOffer(StaffRequiredMixin, View):
             return redirect("backoffice:quote", pk=quote.pk)
         messages.success(request, f'Saved as "{offer.name}". Check the figures and wording below.')
         return redirect("backoffice:offer_edit", pk=offer.pk)
+
+
+# ------------------------------------------------------------------------------------------------ team
+class TeamView(AdminRequiredMixin, StaffPage):
+    """Who can sign in to the back-office and at what level. Read-only: roles are changed in the site admin."""
+
+    template_name = "backoffice/team.html"
+    title = "Team"
+
+    def get_context_data(self, **kwargs):
+        User = get_user_model()
+        members = [
+            {"user": user, "role": roles.role(user)}
+            for user in User.objects.filter(is_staff=True).prefetch_related("groups").order_by("-is_active", "username")
+        ]
+        return super().get_context_data(members=members, admin_group=roles.ADMIN_GROUP, **kwargs)

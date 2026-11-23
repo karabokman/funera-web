@@ -11,7 +11,7 @@ Funera is sold by quotation. Plan prices are left blank in the catalogue, so the
 6. Quotations expire on their `valid_until` date. Expiry is calculated when viewed, so no scheduled job is needed.
 
 ## Staff access
-Sign in at `/<STAFF_URL>login/`. Set `STAFF_URL` in `.env` to an address only your team knows (for example `STAFF_URL=team-k4p9x2/`), the same way you move the Django admin with `ADMIN_URL`. Nothing on the public site links to it, and neither address appears in `robots.txt` or the sitemap. The default `staff/` is for development only. Any active user with `is_staff` can use the back-office (there are no separate roles). Create users with `python manage.py createsuperuser` or in the Django admin by ticking *Staff status*. Sign-in is rate-limited by django-axes. Back-office pages are never cached or indexed.
+Sign in at `/<STAFF_URL>login/`. Set `STAFF_URL` in `.env` to an address only your team knows (for example `STAFF_URL=team-k4p9x2/`), the same way you move the Django admin with `ADMIN_URL`. Nothing on the public site links to it, and neither address appears in `robots.txt` or the sitemap. The default `staff/` is for development only. Any active user with `is_staff` can sign in. What they can do depends on their role (below). Create users with `python manage.py createsuperuser` or in the Django admin by ticking *Staff status*. Sign-in is rate-limited by django-axes. Back-office pages are never cached or indexed.
 
 Staff can also pause, resume and cancel subscriptions, raise refunds and process or decline refund requests (all through PayFast first, then saved locally).
 
@@ -44,3 +44,20 @@ A saved offer is a plan, price, billing period, VAT setting, wording and once-of
 - **Use:** when starting a quotation, or from a lead, click the offer. The whole form is filled in, including the lead's contact details and a valid-until date; change anything before saving.
 - Each offer can set how many days its quotations stay open (empty uses `QUOTE_VALID_DAYS`). Untick **Show in the list** to hide an offer without deleting it.
 - Editing or deleting an offer never changes quotations already made from it.
+
+## Staff roles
+| | Sales | Admin |
+| --- | --- | --- |
+| Leads, follow-ups, quotations (create, send, cancel, duplicate, PDF), use saved offers | Yes | Yes |
+| View customers and subscriptions (read-only) | Yes | Yes |
+| Pause, resume or cancel a subscription | No | Yes |
+| Raise, process or decline refunds; the Refunds list | No | Yes |
+| Create, edit or delete saved offers | No | Yes |
+| Revenue figures on the dashboard (monthly recurring revenue, quotation value, refunds waiting) | No | Yes |
+| Team page | No | Yes |
+| Django admin site | No | Superusers only |
+
+- **Admin** is a superuser or any staff user in the group **Funera Admin**. Every other active staff user is **Sales**, so existing staff accounts become Sales when you apply this update; add the people who need it to the group.
+- To change a role, a superuser opens the user in the Django admin: tick *Staff status*, then add or remove the group *Funera Admin*. Untick *Active* to switch an account off.
+- The Django admin (`ADMIN_URL`) is open to superusers only. An Admin who is not a superuser works in the back-office and cannot open it.
+- A Sales user who opens an admin-only page, or presses an admin-only button, sees an "Administrators only" page. Nothing is changed and PayFast is not contacted. Sales can still see each subscription's amounts and payments, because they need them to answer clients; tell me if you want that hidden too.

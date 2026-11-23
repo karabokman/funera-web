@@ -8,6 +8,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
+from backoffice import roles
 from billing import payfast
 from billing.models import Payment, Refund, Subscription
 from billing.tests.helpers import live_subscription, make_subscription, priced_plan
@@ -20,8 +21,11 @@ User = get_user_model()
 
 
 class StaffTestCase(TestCase):
+    """Signed in as an Admin (a superuser would also pass). Sales-role behaviour is tested in test_roles.py."""
+
     def setUp(self):
         self.staff = User.objects.create_user("sam", "sam@example.com", "pw-12345-long", is_staff=True)
+        self.staff.groups.add(roles.admin_group())
         self.client.force_login(self.staff)
 
 
