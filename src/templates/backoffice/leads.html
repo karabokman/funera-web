@@ -2,6 +2,7 @@
 {% block staff %}
 <h1 class="h-section">Leads</h1>
 <div class="mt-6">{% include "backoffice/_filters.html" %}</div>
+{% if request.user|is_admin %}<p class="mb-3 -mt-2 text-sm"><a class="font-semibold text-brand-dark underline" href="{% url 'backoffice:export' 'leads' %}?q={{ q|urlencode }}{% if status %}&amp;status={{ status|urlencode }}{% endif %}">Download these {{ page.paginator.count }} as CSV</a> <span class="text-slate-500">(follows the search and status above; more options under Admin &rarr; Exports)</span></p>{% endif %}
 <div class="overflow-x-auto rounded-2xl border border-line bg-white"><table class="w-full text-left text-sm">
   <thead class="border-b border-line text-xs uppercase tracking-wide text-slate-500"><tr><th class="p-3">Received</th><th class="p-3">Business</th><th class="p-3">Contact</th><th class="p-3">Size</th><th class="p-3">Interested in</th><th class="p-3">Follow-up</th><th class="p-3">Status</th></tr></thead>
   <tbody class="divide-y divide-line">{% for lead in page %}<tr class="hover:bg-paper">

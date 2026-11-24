@@ -34,7 +34,7 @@ from quotes.forms import OfferForm, OfferLineFormSet, QuoteForm, QuoteLineFormSe
 from quotes.models import Quote, QuoteTemplate
 from quotes.views import pdf_response
 
-from . import audit, audit_log, followups, roles, stats
+from . import audit, audit_log, exports, followups, roles, stats
 from .forms import ChoosePasswordForm, FollowUpForm, InstanceForm, LeadUpdateForm, TeamEditForm, TeamMemberForm
 from .mixins import AdminRequiredMixin, StaffRequiredMixin
 
@@ -90,17 +90,8 @@ class LeadListView(StaffPage):
     title = "Leads"
 
     def get_context_data(self, **kwargs):
-        leads = Lead.objects.select_related("plan_interest")
+        leads = exports.leads(self.request.GET)
         status, query = self.request.GET.get("status", ""), self.request.GET.get("q", "").strip()
-        if status in Lead.Status.values:
-            leads = leads.filter(status=status)
-        if query:
-            leads = leads.filter(
-                Q(name__icontains=query)
-                | Q(business_name__icontains=query)
-                | Q(email__icontains=query)
-                | Q(phone__icontains=query)
-            )
         return super().get_context_data(
             page=paginate(self.request, leads), statuses=Lead.Status.choices, status=status, q=query, **kwargs
         )
@@ -327,12 +318,8 @@ class CustomerListView(StaffPage):
     title = "Customers"
 
     def get_context_data(self, **kwargs):
-        customers = Customer.objects.prefetch_related("subscriptions__plan")
+        customers = exports.customers(self.request.GET)
         query = self.request.GET.get("q", "").strip()
-        if query:
-            customers = customers.filter(
-                Q(name__icontains=query) | Q(business_name__icontains=query) | Q(email__icontains=query)
-            )
         return super().get_context_data(page=paginate(self.request, customers), q=query, **kwargs)
 
 
@@ -355,16 +342,8 @@ class SubscriptionListView(StaffPage):
     title = "Subscriptions"
 
     def get_context_data(self, **kwargs):
-        subscriptions = Subscription.objects.select_related("customer", "plan")
+        subscriptions = exports.subscriptions(self.request.GET)
         status, query = self.request.GET.get("status", ""), self.request.GET.get("q", "").strip()
-        if status in Subscription.Status.values:
-            subscriptions = subscriptions.filter(status=status)
-        if query:
-            subscriptions = subscriptions.filter(
-                Q(reference__icontains=query)
-                | Q(customer__business_name__icontains=query)
-                | Q(customer__email__icontains=query)
-            )
         return super().get_context_data(
             page=paginate(self.request, subscriptions),
             statuses=Subscription.Status.choices,
@@ -879,6 +858,37 @@ class SetPasswordView(PasswordResetConfirmView):
     def get_context_data(self, **kwargs):
         kwargs["page_title"] = "Choose your password"
         return super().get_context_data(**kwargs)
+
+
+# ------------------------------------------------------------------------------------------------ CSV exports
+class ExportsView(AdminRequiredMixin, StaffPage):
+    """Download leads, customers, subscriptions and payments as CSV for the accountant."""
+
+    template_name = "backoffice/exports.html"
+    title = "Exports"
+
+    def get_context_data(self, **kwargs):
+        return super().get_context_data(datasets=list(exports.DATASETS.values()), **kwargs)
+
+
+class ExportDownloadView(AdminRequiredMixin, View):
+    """One CSV file. Admin only, because the files hold personal details and money. Every download is logged with how many
+    rows it held and which filters were used."""
+
+    http_method_names = ["get"]
+
+    def get(self, request, kind):
+        dataset = exports.DATASETS.get(kind)
+        if dataset is None:
+            raise Http404
+        response, count = exports.build(dataset, request.GET, request.GET.get("delimiter", "comma"))
+        used = "; ".join(
+            f"{key}={value}" for key in ("q", "status", "from", "to") if (value := request.GET.get(key, "").strip())
+        )
+        audit.record(
+            request, "export.csv", label=dataset.label, detail=f"{count} rows" + (f" ({used})" if used else "")
+        )
+        return response
 
 
 # ------------------------------------------------------------------------------------------------ audit log

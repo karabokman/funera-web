@@ -90,6 +90,19 @@ On **Team**, every row has actions (Admins only):
 - **Safeguards:** you cannot demote, disable or remove **yourself**, and nobody can take away the **last active Admin**. **Superusers** can only be changed by another superuser, in the site admin. Sales users cannot reach any of this.
 - Every change is in the audit log (changed, removed, password link sent).
 
+## CSV exports (for your accountant)
+**Admin → Exports** downloads four files, and the Leads, Customers and Subscriptions pages have a "Download these N as CSV" link that follows the search and status you have set.
+- **Leads:** contact details, size, plan of interest, consent record, follow-up and where they came from. Internal notes and the message text are not included.
+- **Customers:** one row per customer, with their subscriptions listed.
+- **Subscriptions:** plan, status, billing period, first and recurring amounts (incl. VAT), dates and what has been paid to date (completed payments only).
+- **Payments** (added because it is what an accountant actually needs): every PayFast payment with the amount received, the VAT it contains, the amount excluding VAT, the PayFast fee, the net after the fee, and anything refunded.
+- **Date range:** each card can be limited to From/To (lead and customer received/created dates, payment received date). Dates are South African dates.
+- **Opening in Excel:** UTF-8 with a byte-order mark, so accents display. South African Excel expects semicolons, so each download has a **Separator** choice. Amounts are plain numbers (115.00), dates are 2026-11-24.
+- **VAT columns** are worked out at the *current* `VAT_RATE` and stay blank until `VAT_NUMBER` is set. The rate in force on the day is not stored, so if the rate ever changes, check older payments by hand. Treat the file as a working paper, not a VAT return.
+- **Safety:** text that a spreadsheet could run as a formula (starting with `=`, `@`, or a stray `+`/`-`, which can come from the public contact form) is given a leading apostrophe. Phone numbers such as +27 82 123 4567 are left alone.
+- **Who:** Admins only (the files hold personal details and money). Every download is written to the audit log under "CSV downloads" with the number of rows and the filters used. The files are not stored on the server.
+- Large exports are streamed from the database in chunks, but they are built in one request: tens of thousands of rows are fine, millions would not be.
+
 ## Back-office menu
 The main menu holds the day-to-day pages (Dashboard, Follow-ups, Leads, Quotations, Customers, Instances, Subscriptions). Admins also get an **Admin** menu (Refunds, Audit log, Team, and Site admin for superusers) and everyone has an account menu with their username and Sign out. Menus close when you click elsewhere or press Esc.
 

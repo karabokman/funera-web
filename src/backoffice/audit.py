@@ -59,6 +59,7 @@ ACTIONS = {
     "group.created": "Created a group (site admin)",
     "group.changed": "Changed a group (site admin)",
     "group.deleted": "Deleted a group (site admin)",
+    "export.csv": "Downloaded a CSV export",
     "audit.purged": "Deleted old audit entries",
 }
 
@@ -70,6 +71,7 @@ AREAS = [
     ("subscription", "Subscriptions", ("subscription",)),
     ("instance", "Hosted instances", ("instance",)),
     ("refund", "Refunds", ("refund",)),
+    ("export", "CSV downloads", ("export",)),
     ("user", "Users and roles", ("user", "group")),
     ("staff", "Sign-ins and log clean-up", ("staff",)),
 ]
@@ -105,6 +107,8 @@ def record(request, action: str, obj=None, detail: str = "", *, user=None, label
     kind, pk, auto_label = describe(obj)
     if action.startswith(("staff.", "audit.")):
         kind = "staff"
+    elif action.startswith("export."):
+        kind = "export"
     return AuditEntry.objects.create(
         actor=user,
         actor_name=(user.get_username() if user is not None else "")[:150],

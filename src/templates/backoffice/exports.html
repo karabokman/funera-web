@@ -1,0 +1,26 @@
+{% extends "backoffice/base.html" %}
+{% block staff %}
+<h1 class="h-section">Exports</h1>
+<p class="mt-2 max-w-3xl text-sm text-slate-600">Download your records as CSV files that open in Excel, Google Sheets or your accounting package. Optionally limit them to a date range. Every download is recorded in the audit log, and the files contain personal details and money, so keep them somewhere safe and delete them when you are done.</p>
+<div class="mt-6 grid gap-6 lg:grid-cols-2">
+{% for d in datasets %}
+  <form method="get" action="{% url 'backoffice:export' d.key %}" class="card space-y-4">
+    <div><h2 class="text-lg font-bold">{{ d.label }}</h2><p class="mt-1 text-sm text-slate-600">{{ d.note }}</p></div>
+    <div class="grid gap-3 sm:grid-cols-2">
+      <div><label class="label" for="from-{{ d.key }}">{{ d.date_label }} from</label><input class="field" type="date" id="from-{{ d.key }}" name="from"></div>
+      <div><label class="label" for="to-{{ d.key }}">{{ d.date_label }} to</label><input class="field" type="date" id="to-{{ d.key }}" name="to"></div>
+      {% if d.statuses %}<div><label class="label" for="status-{{ d.key }}">Status</label><select class="field" id="status-{{ d.key }}" name="status"><option value="">All</option>{% for key, label in d.statuses %}<option value="{{ key }}">{{ label }}</option>{% endfor %}</select></div>{% endif %}
+      <div><label class="label" for="delimiter-{{ d.key }}">Separator</label><select class="field" id="delimiter-{{ d.key }}" name="delimiter"><option value="comma">Comma (standard)</option><option value="semicolon">Semicolon (South African Excel)</option></select></div>
+    </div>
+    <button type="submit" class="btn-primary">Download CSV</button>
+  </form>
+{% endfor %}
+</div>
+<section class="card mt-6 max-w-3xl text-sm text-slate-600"><h2 class="text-lg font-bold text-ink">Opening the files</h2>
+  <ul class="mt-2 list-disc space-y-1 pl-5">
+    <li>If Excel puts everything in one column, download again with the <strong>semicolon</strong> separator (Excel in South Africa expects it), or use Data &rarr; From Text/CSV.</li>
+    <li>Amounts are plain numbers in rand with two decimals, dates are year-month-day, and times are South African time.</li>
+    <li>Prices include VAT. The payments file works out the VAT part at the <em>current</em> VAT rate, and leaves those columns blank until a VAT number is set in the site settings. If the rate ever changes, older payments need checking by hand.</li>
+    <li>Text that a spreadsheet could mistake for a formula (starting with =, @ or a stray + or -) is given a leading apostrophe so it can never run.</li>
+  </ul></section>
+{% endblock %}
