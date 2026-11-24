@@ -8,7 +8,9 @@
 Only superusers may use the Django admin site.
 """
 
+from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from django.db.models import Q
 
 ADMIN_GROUP = "Funera Admin"
 ADMIN = "Admin"
@@ -36,3 +38,18 @@ def is_admin(user) -> bool:
 
 def role(user) -> str:
     return ADMIN if is_admin(user) else SALES
+
+
+def active_admins():
+    """Active staff who are Admins (superusers included)."""
+    return (
+        get_user_model()
+        .objects.filter(is_active=True, is_staff=True)
+        .filter(Q(is_superuser=True) | Q(groups__name=ADMIN_GROUP))
+        .distinct()
+    )
+
+
+def would_leave_no_admin(user) -> bool:
+    """True if taking away this person's admin access (or sign-in) would leave nobody able to manage the team."""
+    return active_admins().filter(pk=user.pk).exists() and active_admins().count() <= 1

@@ -1,11 +1,14 @@
 from django import forms
 from django.contrib.auth import get_user_model
+from django.contrib.auth.forms import SetPasswordForm
 from django.db.models import Q
 from django.utils import timezone
 
 from billing.models import Subscription
 from instances.models import Instance
 from leads.models import Lead
+
+from . import roles
 
 
 class FollowUpForm(forms.Form):
@@ -87,3 +90,110 @@ class InstanceForm(forms.ModelForm):
         if commit:
             instance.save()
         return instance
+
+
+class TeamMemberForm(forms.ModelForm):
+    """Add someone who can sign in to the back-office. They choose their own password from an e-mailed link."""
+
+    ROLES = [
+        (roles.SALES, "Sales: leads, follow-ups, quotations, customers"),
+        (roles.ADMIN, "Admin: everything, including refunds, money totals, team and audit log"),
+    ]
+    role = forms.ChoiceField(choices=ROLES, initial=roles.SALES, widget=forms.RadioSelect)
+
+    class Meta:
+        model = get_user_model()
+        fields = ["username", "first_name", "last_name", "email"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for name in ("username", "first_name", "last_name", "email"):
+            self.fields[name].widget.attrs["class"] = "field"
+        self.fields["email"].required = True
+        self.fields["first_name"].required = True
+        self.fields["username"].help_text = "Letters, numbers and @ . + - _ only. They use this to sign in."
+
+    def clean_username(self):
+        username = self.cleaned_data["username"].strip()
+        if get_user_model().objects.filter(username__iexact=username).exists():
+            raise forms.ValidationError("That username is already taken.")
+        return username
+
+    def clean_email(self):
+        email = self.cleaned_data["email"].strip().lower()
+        if get_user_model().objects.filter(email__iexact=email).exists():
+            raise forms.ValidationError("Someone with that e-mail address already has a login.")
+        return email
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.is_staff, user.is_active, user.is_superuser = True, True, False  # superusers are never made here
+        user.set_unusable_password()
+        user.save()
+        if self.cleaned_data["role"] == roles.ADMIN:
+            user.groups.add(roles.admin_group())
+        return user
+
+
+class ChoosePasswordForm(SetPasswordForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs["class"] = "field"
+
+
+class TeamEditForm(forms.ModelForm):
+    """Change a team member's details, role and whether they can sign in. The username cannot be changed."""
+
+    role = forms.ChoiceField(choices=TeamMemberForm.ROLES, widget=forms.RadioSelect)
+    is_active = forms.BooleanField(
+        required=False, label="Can sign in", help_text="Untick to block sign-in without removing the person."
+    )
+
+    class Meta:
+        model = get_user_model()
+        fields = ["first_name", "last_name", "email", "is_active"]
+
+    def __init__(self, *args, actor, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.actor = actor
+        self.fields["role"].initial = roles.role(self.instance)
+        for name in ("first_name", "last_name", "email"):
+            self.fields[name].widget.attrs["class"] = "field"
+        self.fields["first_name"].required = True
+        self.fields["email"].required = True
+
+    def clean_email(self):
+        email = self.cleaned_data["email"].strip().lower()
+        if get_user_model().objects.filter(email__iexact=email).exclude(pk=self.instance.pk).exists():
+            raise forms.ValidationError("Someone else with that e-mail address already has a login.")
+        return email
+
+    def clean(self):
+        data = super().clean()
+        if self.errors or "role" not in data:
+            return data
+        losing_admin = data["role"] != roles.ADMIN or not data.get("is_active")
+        if losing_admin and self.instance.pk == self.actor.pk:
+            raise forms.ValidationError(
+                "You cannot take away your own admin access or disable your own account. Ask another Admin."
+            )
+        if losing_admin and roles.would_leave_no_admin(self.instance):
+            raise forms.ValidationError("That would leave no active Admin. Make someone else an Admin first.")
+        return data
+
+    def changes(self) -> list[str]:
+        said = [f.replace("_", " ") for f in self.changed_data if f != "role"]
+        if self.cleaned_data["role"] != roles.role(self.instance) or "role" in self.changed_data:
+            said.append("role")
+        return said
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.save()
+        in_group = user.groups.filter(name=roles.ADMIN_GROUP).exists()
+        if self.cleaned_data["role"] == roles.ADMIN and not in_group:
+            user.groups.add(roles.admin_group())
+        elif self.cleaned_data["role"] == roles.SALES and in_group:
+            user.groups.remove(roles.admin_group())
+        return user

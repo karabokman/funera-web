@@ -75,6 +75,21 @@ Admins open **Audit log** in the back-office to see who did what, and when.
 - **Before the audit log:** staff events from before you applied the audit-log update never recorded who, so they show "staff (before the audit log)". That cannot be repaired afterwards.
 - **Privacy:** the log holds staff usernames and IP addresses. The public privacy notice now says so (section "Our staff and administrators", notice version 1.1) and states the retention period from `AUDIT_RETENTION_MONTHS`. If you change the period, the notice follows automatically. Review the wording with your information officer or lawyer. The `django-axes` access log (a second copy of every address that signs in) is switched off, because this audit log replaces it; axes still keeps failed attempts briefly to block guessing.
 
+## Adding team members
+Admins open **Team** and press **Add a team member**: username, first name, last name, e-mail and a role (**Sales** or **Admin**).
+- **No password is typed or shown.** The new person is e-mailed a link to choose their own password (checked against the usual password rules). The link works once and expires after 3 days (Django's `PASSWORD_RESET_TIMEOUT`). They then sign in at the staff sign-in page.
+- If the e-mail cannot be sent (SMTP down), the person is still added and the page shows the link so you can pass it on yourself. Treat it like a password: it lets whoever opens it first choose the password.
+- **Only Admins** can add people; Sales get an "administrators only" page. A **superuser** (access to the Django admin) can never be created here: that stays a `createsuperuser` job.
+- Username and e-mail must be unused. Adding someone, and them choosing their password, are written to the audit log.
+
+### Changing access and removing people
+On **Team**, every row has actions (Admins only):
+- **Edit:** name, e-mail, role (Sales or Admin) and **Can sign in**. Untick *Can sign in* to block someone for a while; it takes effect on their next click. The username cannot be changed.
+- **Send password link:** e-mails a fresh one-time link to choose a new password (forgotten password, or an invitation that expired). If the e-mail fails, the link is shown to you.
+- **Remove:** takes access away for good: not staff, switched off, password wiped, role removed, gone from the Team list. The account itself is kept so the audit log and any records that name them stay meaningful. To bring someone back, a superuser restores them in the Django admin (they cannot be re-added here with the same username or e-mail).
+- **Safeguards:** you cannot demote, disable or remove **yourself**, and nobody can take away the **last active Admin**. **Superusers** can only be changed by another superuser, in the site admin. Sales users cannot reach any of this.
+- Every change is in the audit log (changed, removed, password link sent).
+
 ## Back-office menu
 The main menu holds the day-to-day pages (Dashboard, Follow-ups, Leads, Quotations, Customers, Instances, Subscriptions). Admins also get an **Admin** menu (Refunds, Audit log, Team, and Site admin for superusers) and everyone has an account menu with their username and Sign out. Menus close when you click elsewhere or press Esc.
 

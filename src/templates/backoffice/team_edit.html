@@ -1,0 +1,16 @@
+{% extends "backoffice/base.html" %}
+{% block staff %}
+<p><a class="text-sm font-semibold text-brand-dark underline" href="{% url 'backoffice:team' %}">&larr; Team</a></p>
+<h1 class="h-section mt-2">Edit {{ member.get_username }}</h1>
+<p class="mt-2 max-w-2xl text-sm text-slate-600">The username cannot be changed. Role changes apply the next time the person opens a page.</p>
+<form method="post" class="card mt-6 max-w-2xl space-y-5" novalidate>{% csrf_token %}
+  {% if form.errors %}<div class="rounded-xl bg-red-50 p-3 text-sm text-red-800" role="alert">{% for e in form.non_field_errors %}<p>{{ e }}</p>{% empty %}<p>Please correct the errors below.</p>{% endfor %}</div>{% endif %}
+  <div class="grid gap-4 sm:grid-cols-2">
+    {% for f in form %}{% if f.name != "role" and f.name != "is_active" %}<div><label class="label" for="{{ f.id_for_label }}">{{ f.label }}</label>{{ f }}{% for e in f.errors %}<p class="field-error">{{ e }}</p>{% endfor %}</div>{% endif %}{% endfor %}
+  </div>
+  <fieldset><legend class="label">Role</legend>
+    {% for radio in form.role %}<label class="mt-2 flex items-start gap-3 text-sm">{{ radio.tag }}<span>{{ radio.choice_label }}</span></label>{% endfor %}{% for e in form.role.errors %}<p class="field-error">{{ e }}</p>{% endfor %}</fieldset>
+  <div><label class="flex items-center gap-3 text-sm font-semibold">{{ form.is_active }} {{ form.is_active.label }}</label><p class="mt-1 text-xs text-slate-500">{{ form.is_active.help_text }}</p></div>
+  <div class="flex flex-wrap gap-3"><button type="submit" class="btn-primary btn-lg">Save changes</button><a class="btn-outline btn-lg" href="{% url 'backoffice:team' %}">Cancel</a></div>
+</form>
+{% endblock %}

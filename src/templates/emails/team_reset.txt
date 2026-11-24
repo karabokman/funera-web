@@ -1,0 +1,15 @@
+Hello {{ name }},
+
+{{ inviter }} has sent you a link to choose a new password for the {{ brand }} back-office.
+
+Your username is: {{ username }}
+
+Choose your new password here:
+
+{{ link }}
+
+The link can be used once and stops working after {{ days }} days. Sign in at: {{ login_url }}
+
+If you did not ask for this, ignore this e-mail and tell {{ inviter }}.
+
+{{ brand }}

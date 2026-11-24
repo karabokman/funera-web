@@ -6,14 +6,18 @@ import logging
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import get_user_model
-from django.contrib.auth.views import LoginView, LogoutView
+from django.contrib.auth.tokens import default_token_generator
+from django.contrib.auth.views import LoginView, LogoutView, PasswordResetConfirmView
+from django.core.mail import EmailMessage
 from django.core.paginator import Paginator
 from django.db.models import Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect
+from django.template.loader import render_to_string
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
-from django.utils.http import url_has_allowed_host_and_scheme
+from django.utils.encoding import force_bytes
+from django.utils.http import url_has_allowed_host_and_scheme, urlsafe_base64_encode
 from django.views import View
 from django.views.generic import FormView, TemplateView
 
@@ -31,7 +35,7 @@ from quotes.models import Quote, QuoteTemplate
 from quotes.views import pdf_response
 
 from . import audit, audit_log, followups, roles, stats
-from .forms import FollowUpForm, InstanceForm, LeadUpdateForm
+from .forms import ChoosePasswordForm, FollowUpForm, InstanceForm, LeadUpdateForm, TeamEditForm, TeamMemberForm
 from .mixins import AdminRequiredMixin, StaffRequiredMixin
 
 logger = logging.getLogger(__name__)
@@ -674,6 +678,207 @@ class TeamView(AdminRequiredMixin, StaffPage):
             for user in User.objects.filter(is_staff=True).prefetch_related("groups").order_by("-is_active", "username")
         ]
         return super().get_context_data(members=members, admin_group=roles.ADMIN_GROUP, **kwargs)
+
+
+def _send_password_link(request, user, template: str, subject: str, role: str = "") -> str | None:
+    """E-mail a one-time "choose a password" link. Returns None when sent, or the link itself when the e-mail failed so the
+    Admin can pass it on."""
+    link = request.build_absolute_uri(
+        reverse(
+            "backoffice:set_password",
+            args=[urlsafe_base64_encode(force_bytes(user.pk)), default_token_generator.make_token(user)],
+        )
+    )
+    body = render_to_string(
+        template,
+        {
+            "name": user.first_name or user.get_username(),
+            "inviter": request.user.get_full_name() or request.user.get_username(),
+            "brand": settings.BRAND_NAME,
+            "role": role or roles.role(user),
+            "username": user.get_username(),
+            "link": link,
+            "days": settings.PASSWORD_RESET_TIMEOUT // 86400,
+            "login_url": request.build_absolute_uri(settings.STAFF_LOGIN_URL),
+        },
+    )
+    try:
+        EmailMessage(subject, body, settings.DEFAULT_FROM_EMAIL, [user.email]).send(fail_silently=False)
+    except Exception:
+        logger.exception("Password link e-mail to %s failed", user.get_username())
+        audit.record(request, "team.invite_failed", user)
+        return link
+    return None
+
+
+class TeamNewView(AdminRequiredMixin, StaffPage):
+    """Admins add staff and admins here. The new person gets an e-mail to choose their own password; no password is typed
+    or shown anywhere. Only an Admin can reach this, and a superuser can never be created here."""
+
+    template_name = "backoffice/team_form.html"
+    title = "Add a team member"
+
+    def get_context_data(self, **kwargs):
+        kwargs.setdefault("form", TeamMemberForm())
+        return super().get_context_data(**kwargs)
+
+    def post(self, request):
+        form = TeamMemberForm(request.POST)
+        if not form.is_valid():
+            return self.render_to_response(self.get_context_data(form=form))
+        user = form.save()
+        role = form.cleaned_data["role"]
+        audit.record(request, "team.created", user, f"Role: {role}.")
+        link = _send_password_link(
+            request, user, "emails/team_invite.txt", f"Your {settings.BRAND_NAME} back-office login", role
+        )
+        if link is None:
+            messages.success(
+                request,
+                f"{user.get_username()} was added as {role}. An e-mail with a link to choose a password was sent to {user.email}.",
+            )
+        else:
+            messages.warning(
+                request,
+                f"{user.get_username()} was added, but the e-mail could not be sent. Give them this link to choose a password (it works once): {link}",
+            )
+        return redirect("backoffice:team")
+
+
+class TeamMemberMixin(AdminRequiredMixin):
+    """Edit, remove and password-link pages for one team member. Superusers are looked after in the site admin, so an
+    Admin who is not a superuser cannot touch them."""
+
+    def get_member(self):
+        return get_object_or_404(get_user_model(), pk=self.kwargs["pk"], is_staff=True)
+
+    def refuse(self, member):
+        """A message if this person cannot be managed here, else None."""
+        if member.is_superuser and not self.request.user.is_superuser:
+            return f"{member.get_username()} is a superuser and can only be changed in the site admin."
+        return None
+
+
+class TeamEditView(TeamMemberMixin, StaffPage):
+    template_name = "backoffice/team_edit.html"
+    title = "Edit team member"
+
+    def setup_form(self, data=None):
+        self.member = self.get_member()
+        return TeamEditForm(data, instance=self.member, actor=self.request.user)
+
+    def get(self, request, *args, **kwargs):
+        form = self.setup_form()
+        if problem := self.refuse(self.member):
+            messages.error(request, problem)
+            return redirect("backoffice:team")
+        return self.render_to_response(self.get_context_data(form=form, member=self.member))
+
+    def post(self, request, *args, **kwargs):
+        form = self.setup_form(request.POST)
+        if problem := self.refuse(self.member):
+            messages.error(request, problem)
+            return redirect("backoffice:team")
+        if not form.is_valid():
+            return self.render_to_response(self.get_context_data(form=form, member=self.member))
+        said = form.changes()
+        user = form.save()
+        if said:
+            audit.record(
+                request,
+                "team.edited",
+                user,
+                f"Changed: {', '.join(said)}. Role now {roles.role(user)}{'' if user.is_active else ', cannot sign in'}.",
+            )
+        messages.success(request, f"{user.get_username()} was updated.")
+        return redirect("backoffice:team")
+
+
+class TeamRemoveView(TeamMemberMixin, StaffPage):
+    """Remove a person's access for good. Their account stays (switched off, with no password and no role) so the audit log
+    and any leads or quotes that name them still make sense."""
+
+    template_name = "backoffice/team_remove.html"
+    title = "Remove team member"
+
+    def blocked(self, member):
+        if problem := self.refuse(member):
+            return problem
+        if member.pk == self.request.user.pk:
+            return "You cannot remove yourself. Ask another Admin."
+        if roles.would_leave_no_admin(member):
+            return "That would leave no active Admin. Make someone else an Admin first."
+        return None
+
+    def get(self, request, *args, **kwargs):
+        member = self.get_member()
+        if problem := self.blocked(member):
+            messages.error(request, problem)
+            return redirect("backoffice:team")
+        return self.render_to_response(self.get_context_data(member=member))
+
+    def post(self, request, *args, **kwargs):
+        member = self.get_member()
+        if problem := self.blocked(member):
+            messages.error(request, problem)
+            return redirect("backoffice:team")
+        member.is_staff = False
+        member.is_active = False
+        member.set_unusable_password()
+        member.save()
+        member.groups.clear()
+        audit.record(
+            request, "team.removed", member, "Access removed; the account is kept so history stays attributed."
+        )
+        messages.success(request, f"{member.get_username()} was removed. They can no longer sign in.")
+        return redirect("backoffice:team")
+
+
+class TeamPasswordLinkView(TeamMemberMixin, View):
+    """E-mail a team member a fresh link to choose a new password (forgotten password, or an invitation that expired)."""
+
+    http_method_names = ["post"]
+
+    def post(self, request, pk):
+        member = self.get_member()
+        if problem := self.refuse(member):
+            messages.error(request, problem)
+        elif not member.is_active:
+            messages.error(request, f"{member.get_username()} cannot sign in at the moment, so no link was sent.")
+        elif not member.email:
+            messages.error(request, f"{member.get_username()} has no e-mail address.")
+        else:
+            link = _send_password_link(
+                request, member, "emails/team_reset.txt", f"Choose a new {settings.BRAND_NAME} password"
+            )
+            audit.record(request, "team.link_sent", member)
+            if link is None:
+                messages.success(request, f"A link to choose a new password was e-mailed to {member.email}.")
+            else:
+                messages.warning(
+                    request,
+                    f"The e-mail could not be sent. Give {member.get_username()} this link (it works once): {link}",
+                )
+        return redirect("backoffice:team")
+
+
+class SetPasswordView(PasswordResetConfirmView):
+    """The page behind the invitation link: choose a password, then sign in."""
+
+    template_name = "backoffice/set_password.html"
+    success_url = reverse_lazy("backoffice:login")
+    post_reset_login = False
+    form_class = ChoosePasswordForm
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        audit.record(self.request, "team.password_set", form.user, user=form.user)
+        messages.success(self.request, "Your password is set. Sign in below.")
+        return response
+
+    def get_context_data(self, **kwargs):
+        kwargs["page_title"] = "Choose your password"
+        return super().get_context_data(**kwargs)
 
 
 # ------------------------------------------------------------------------------------------------ audit log

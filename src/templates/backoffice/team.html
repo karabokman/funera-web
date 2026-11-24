@@ -2,14 +2,19 @@
 {% block staff %}
 <h1 class="h-section">Team</h1>
 <p class="mt-2 text-sm text-slate-600">Everyone who can sign in to the back-office. <strong>Admin</strong> can do everything. <strong>Sales</strong> can work leads, follow-ups, quotations and customers, but cannot refund, pause or cancel subscriptions, edit saved offers or see revenue totals.</p>
+<p class="mt-4"><a class="btn-primary" href="{% url 'backoffice:team_new' %}">Add a team member</a></p>
 <div class="mt-6 overflow-x-auto rounded-2xl border border-line bg-white"><table class="w-full text-left text-sm">
-  <thead class="border-b border-line text-xs uppercase tracking-wide text-slate-500"><tr><th class="p-3">User</th><th class="p-3">E-mail</th><th class="p-3">Role</th><th class="p-3">Last sign-in</th><th class="p-3">Account</th></tr></thead>
+  <thead class="border-b border-line text-xs uppercase tracking-wide text-slate-500"><tr><th class="p-3">User</th><th class="p-3">E-mail</th><th class="p-3">Role</th><th class="p-3">Last sign-in</th><th class="p-3">Account</th><th class="p-3"><span class="sr-only">Actions</span></th></tr></thead>
   <tbody class="divide-y divide-line">{% for m in members %}<tr>
     <td class="p-3 font-semibold">{{ m.user.get_username }}{% if m.user.get_full_name %}<br><span class="font-normal text-slate-500">{{ m.user.get_full_name }}</span>{% endif %}</td>
     <td class="p-3">{{ m.user.email|default:"—" }}</td>
     <td class="p-3">{% include "backoffice/_badge.html" with label=m.role tone=m.role|yesno:"info,info" %}{% if m.user.is_superuser %} <span class="text-xs text-slate-500">superuser</span>{% endif %}</td>
     <td class="p-3 text-slate-600">{{ m.user.last_login|date:"j M Y H:i"|default:"never" }}</td>
-    <td class="p-3">{% include "backoffice/_badge.html" with label=m.user.is_active|yesno:"Active,Disabled" tone=m.user.is_active|yesno:"good,bad" %}</td></tr>{% endfor %}</tbody></table></div>
-<section class="card mt-6"><h2 class="text-lg font-bold">Changing someone's role</h2>
-  <p class="mt-2 text-sm text-slate-600">Only a superuser can do this, in the site admin: open the user, tick <em>Staff status</em> so they can sign in, and add them to the group <strong>{{ admin_group }}</strong> to make them an Admin. Remove the group to make them Sales. Untick <em>Active</em> to switch an account off. Only superusers can open the site admin.</p></section>
+    <td class="p-3">{% include "backoffice/_badge.html" with label=m.user.is_active|yesno:"Active,Disabled" tone=m.user.is_active|yesno:"good,bad" %}</td>
+    <td class="whitespace-nowrap p-3 text-right">{% if m.user.is_superuser and not request.user.is_superuser %}<span class="text-xs text-slate-500">Site admin only</span>{% else %}
+      <a class="font-semibold text-brand-dark underline" href="{% url 'backoffice:team_edit' m.user.pk %}">Edit</a>
+      {% if m.user.is_active %}<form method="post" action="{% url 'backoffice:team_password_link' m.user.pk %}" class="ml-3 inline">{% csrf_token %}<button type="submit" class="font-semibold text-brand-dark underline">Send password link</button></form>{% endif %}
+      {% if m.user.pk != request.user.pk %}<a class="ml-3 font-semibold text-red-700 underline" href="{% url 'backoffice:team_remove' m.user.pk %}">Remove</a>{% else %}<span class="ml-3 text-xs text-slate-500">(you)</span>{% endif %}{% endif %}</td></tr>{% endfor %}</tbody></table></div>
+<section class="card mt-6"><h2 class="text-lg font-bold">Looking after the team</h2>
+  <p class="mt-2 text-sm text-slate-600"><strong>Edit</strong> changes a person's name, e-mail, role (<strong>{{ admin_group }}</strong> members are Admins) or whether they can sign in. <strong>Send password link</strong> e-mails them a fresh link to choose a new password. <strong>Remove</strong> takes their access away for good while keeping their history. You cannot change or remove yourself, nor the last active Admin. Superusers (access to the Django admin) can only be changed by another superuser, in the site admin.</p></section>
 {% endblock %}

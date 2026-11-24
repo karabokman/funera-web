@@ -1,0 +1,15 @@
+Hello {{ name }},
+
+{{ inviter }} has given you a login to the {{ brand }} back-office as {{ role }}.
+
+Your username is: {{ username }}
+
+Choose your password here:
+
+{{ link }}
+
+The link can be used once and stops working after {{ days }} days. Sign in at: {{ login_url }}
+
+If you were not expecting this, ignore this e-mail and tell {{ inviter }}.
+
+{{ brand }}

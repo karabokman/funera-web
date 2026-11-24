@@ -1,0 +1,11 @@
+{% extends "backoffice/base.html" %}
+{% block staff %}
+<p><a class="text-sm font-semibold text-brand-dark underline" href="{% url 'backoffice:team' %}">&larr; Team</a></p>
+<h1 class="h-section mt-2">Remove {{ member.get_username }}?</h1>
+<div class="card mt-6 max-w-2xl space-y-4 text-sm">
+  <p><strong>{{ member.get_full_name|default:member.get_username }}</strong> will no longer be able to sign in or see anything in the back-office, and their password is wiped.</p>
+  <p>Their account is kept (switched off) so the audit log and any leads or quotations that mention them still make sense. To give them access again later, a superuser has to restore them in the site admin; they cannot be added again here with the same username or e-mail address.</p>
+  <p>If you only want to stop them signing in for a while, choose <em>Edit</em> and untick <em>Can sign in</em> instead.</p>
+  <form method="post" class="flex flex-wrap gap-3">{% csrf_token %}<button type="submit" class="btn-primary btn-lg">Remove access</button><a class="btn-outline btn-lg" href="{% url 'backoffice:team' %}">Cancel</a></form>
+</div>
+{% endblock %}
