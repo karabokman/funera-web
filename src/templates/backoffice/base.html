@@ -15,8 +15,9 @@
       <a class="nav-link {% if 'instance' in name %}!bg-brand-soft !text-brand-dark{% endif %}" href="{% url 'backoffice:instances' %}">Instances</a>
       <a class="nav-link {% if 'subscription' in name %}!bg-brand-soft !text-brand-dark{% endif %}" href="{% url 'backoffice:subscriptions' %}">Subscriptions</a>
       {% if request.user|is_admin %}<details class="relative" data-menu>
-        <summary class="nav-link flex cursor-pointer list-none items-center gap-1 [&::-webkit-details-marker]:hidden {% if 'refund' in name or name == 'audit' or name == 'team' or name == 'exports' %}!bg-brand-soft !text-brand-dark{% endif %}">Admin <svg class="h-3 w-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 4l4 4 4-4"/></svg></summary>
+        <summary class="nav-link flex cursor-pointer list-none items-center gap-1 [&::-webkit-details-marker]:hidden {% if 'refund' in name or name == 'audit' or name == 'team' or name == 'exports' or name == 'reports' or name == 'report_csv' %}!bg-brand-soft !text-brand-dark{% endif %}">Admin <svg class="h-3 w-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 4l4 4 4-4"/></svg></summary>
         <div class="absolute left-0 z-20 mt-1 min-w-44 rounded-xl border border-line bg-white p-1 shadow-lg">
+          <a class="nav-link block" href="{% url 'backoffice:reports' %}">Reports</a>
           <a class="nav-link block" href="{% url 'backoffice:refunds' %}">Refunds</a>
           <a class="nav-link block" href="{% url 'backoffice:exports' %}">Exports</a>
           <a class="nav-link block" href="{% url 'backoffice:audit' %}">Audit log</a>

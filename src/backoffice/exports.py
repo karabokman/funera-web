@@ -29,9 +29,10 @@ DELIMITERS = {"comma": ",", "semicolon": ";"}
 _PHONE_LIKE = re.compile(r"^[+-]?[\d\s().-]+$")
 
 
-def safe(value) -> str:
+def safe(value, decimal: str = ".") -> str:
     """One cell as text. Anything a spreadsheet could run as a formula is defused with a leading apostrophe, because
-    names and messages come from the public contact form. Phone numbers such as +27 82 123 4567 are left alone."""
+    names and messages come from the public contact form. Phone numbers such as +27 82 123 4567 are left alone. Numbers
+    use ``decimal`` as the decimal mark (a comma for the semicolon files, which South African Excel expects)."""
     if value is None:
         return ""
     if isinstance(value, bool):
@@ -45,7 +46,9 @@ def safe(value) -> str:
     if isinstance(value, date):
         return value.isoformat()
     if isinstance(value, Decimal):
-        return f"{value.quantize(CENT, ROUND_HALF_UP)}"
+        return f"{value.quantize(CENT, ROUND_HALF_UP)}".replace(".", decimal)
+    if isinstance(value, float):
+        return f"{value}".replace(".", decimal)
     text = str(value).replace("\r", " ").replace("\n", " ").strip()
     if text and text[0] in "=@\t" or (text and text[0] in "+-" and not _PHONE_LIKE.match(text)):
         return "'" + text
@@ -228,17 +231,21 @@ DATASETS = {
 }  # fmt: skip
 
 
-def build(dataset: Dataset, params, delimiter: str = "comma") -> tuple[HttpResponse, int]:
-    """The CSV download and the number of data rows in it. UTF-8 with a byte-order mark so Excel shows accents correctly."""
+def csv_response(name: str, header, rows, delimiter: str = "comma") -> tuple[HttpResponse, int]:
+    """A CSV download and the number of data rows in it. UTF-8 with a byte-order mark so Excel shows accents correctly."""
     response = HttpResponse(content_type="text/csv; charset=utf-8")
-    stamp = timezone.localdate().isoformat()
-    response["Content-Disposition"] = f'attachment; filename="funera-{dataset.key}-{stamp}.csv"'
+    response["Content-Disposition"] = f'attachment; filename="funera-{name}-{timezone.localdate().isoformat()}.csv"'
     response["Cache-Control"] = "no-store"
-    response.write("﻿")
+    response.write("\ufeff")
     writer = csv.writer(response, delimiter=DELIMITERS.get(delimiter, ","), lineterminator="\r\n")
-    writer.writerow(dataset.header)
+    decimal = "," if delimiter == "semicolon" else "."
+    writer.writerow(header)
     count = 0
-    for row in dataset.rows(dataset.queryset(params)):
-        writer.writerow([safe(cell) for cell in row])
+    for row in rows:
+        writer.writerow([safe(cell, decimal) for cell in row])
         count += 1
     return response, count
+
+
+def build(dataset: Dataset, params, delimiter: str = "comma") -> tuple[HttpResponse, int]:
+    return csv_response(dataset.key, dataset.header, dataset.rows(dataset.queryset(params)), delimiter)

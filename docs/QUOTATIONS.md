@@ -97,14 +97,26 @@ On **Team**, every row has actions (Admins only):
 - **Subscriptions:** plan, status, billing period, first and recurring amounts (incl. VAT), dates and what has been paid to date (completed payments only).
 - **Payments** (added because it is what an accountant actually needs): every PayFast payment with the amount received, the VAT it contains, the amount excluding VAT, the PayFast fee, the net after the fee, and anything refunded.
 - **Date range:** each card can be limited to From/To (lead and customer received/created dates, payment received date). Dates are South African dates.
-- **Opening in Excel:** UTF-8 with a byte-order mark, so accents display. South African Excel expects semicolons, so each download has a **Separator** choice. Amounts are plain numbers (115.00), dates are 2026-11-24.
+- **Opening in Excel:** UTF-8 with a byte-order mark, so accents display. Each download has a **Separator** choice: *comma* (standard, amounts like 115.00) or *semicolon and decimal comma* (columns split by `;` and amounts like 115,00), which is what Excel with South African regional settings expects. Dates are 2026-11-24 either way.
 - **VAT columns** are worked out at the *current* `VAT_RATE` and stay blank until `VAT_NUMBER` is set. The rate in force on the day is not stored, so if the rate ever changes, check older payments by hand. Treat the file as a working paper, not a VAT return.
 - **Safety:** text that a spreadsheet could run as a formula (starting with `=`, `@`, or a stray `+`/`-`, which can come from the public contact form) is given a leading apostrophe. Phone numbers such as +27 82 123 4567 are left alone.
 - **Who:** Admins only (the files hold personal details and money). Every download is written to the audit log under "CSV downloads" with the number of rows and the filters used. The files are not stored on the server.
 - Large exports are streamed from the database in chunks, but they are built in one request: tens of thousands of rows are fine, millions would not be.
 
+## Reports
+**Admin → Reports** answers "how is the business doing?" for a period you choose (default: the last twelve months; quick choices for 3 months, 6 months, this year and all time). Admins only, because it is all money. Every table can be downloaded as CSV (summary of every figure, month by month, revenue by plan, every quotation sent, lead sources); downloads are audit-logged like the other exports.
+- **Headline figures:** recurring revenue today (and per year), quote-to-won rate, typical time to close, average monthly churn, money received in the period, and revenue at risk from failed payments.
+- **Sales:** leads received in the period and where they stand (contacted, quoted, won, lost, open), the lead win rate, and the quotations sent in the period by outcome (accepted, declined, expired, withdrawn, still open) with the monthly value won and a by-plan breakdown.
+- **Quote-to-won rate** = accepted ÷ quotations that reached an outcome (accepted, declined or expired unanswered). Open and withdrawn quotations are left out so a busy week does not look like a bad one; "accepted of everything sent" is shown too.
+- **Time to close** (for quotations accepted in the period): days from lead to quotation, quotation to acceptance, the whole sale, acceptance to first payment, and first payment to the instance going live, each as a median (the middle case) and an average.
+- **Recurring revenue by plan:** what is billed per month right now, annual plans at one twelfth, with share, average per customer, customers whose payment failed (shown as at risk) and paused customers (listed apart, not counted). The excl. VAT column appears once `VAT_NUMBER` is set.
+- **Growth and churn by month:** customers and recurring revenue at each month end, new and lost customers, customer churn (lost ÷ customers at the start of the month) and revenue churn, with a chart and the money received and refunded that month. This is **rebuilt** from activation and cancellation dates at today's prices. Past price changes, pauses and failed payments are not known, so treat it as a close guide, not an audited figure. Months are whole calendar months, and at most the latest 24 are shown.
+- **Also:** money received (payments, PayFast fees, refunds, failed payments), lead sources by UTM source with their win rates, and hosting right now (live, waiting for set-up, out of date, paying with no record).
+- **Read the counts beside each rate.** With a handful of leads or customers, one deal moves a percentage a long way. Lost leads are deleted after the retention period (the Won ones are kept), so the win rate for very old periods looks better than it really was.
+- Nothing is stored: every figure is calculated from the live records when the page opens.
+
 ## Back-office menu
-The main menu holds the day-to-day pages (Dashboard, Follow-ups, Leads, Quotations, Customers, Instances, Subscriptions). Admins also get an **Admin** menu (Refunds, Audit log, Team, and Site admin for superusers) and everyone has an account menu with their username and Sign out. Menus close when you click elsewhere or press Esc.
+The main menu holds the day-to-day pages (Dashboard, Follow-ups, Leads, Quotations, Customers, Instances, Subscriptions). Admins also get an **Admin** menu (Reports, Refunds, Exports, Audit log, Team, and Site admin for superusers) and everyone has an account menu with their username and Sign out. Menus close when you click elsewhere or press Esc.
 
 ## Hosted instances
 Each client runs their own copy of the platform on your hosting. **Instances** in the back-office keeps one record per client so nothing is lost between "paid" and "live".

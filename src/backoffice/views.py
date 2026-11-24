@@ -34,7 +34,7 @@ from quotes.forms import OfferForm, OfferLineFormSet, QuoteForm, QuoteLineFormSe
 from quotes.models import Quote, QuoteTemplate
 from quotes.views import pdf_response
 
-from . import audit, audit_log, exports, followups, roles, stats
+from . import audit, audit_log, exports, followups, reports, roles, stats
 from .forms import ChoosePasswordForm, FollowUpForm, InstanceForm, LeadUpdateForm, TeamEditForm, TeamMemberForm
 from .mixins import AdminRequiredMixin, StaffRequiredMixin
 
@@ -887,6 +887,76 @@ class ExportDownloadView(AdminRequiredMixin, View):
         )
         audit.record(
             request, "export.csv", label=dataset.label, detail=f"{count} rows" + (f" ({used})" if used else "")
+        )
+        return response
+
+
+# ------------------------------------------------------------------------------------------------ reports
+class ReportsView(AdminRequiredMixin, StaffPage):
+    """Funnel, quotation results, time to close, recurring revenue, churn and cash. Admins only, because it is all money."""
+
+    template_name = "backoffice/reports.html"
+    title = "Reports"
+
+    def presets(self, today):
+        earliest = min(
+            (
+                local
+                for local in (
+                    reports.local_date(
+                        Lead.objects.order_by("created_at").values_list("created_at", flat=True).first()
+                    ),
+                    reports.local_date(
+                        Quote.objects.order_by("created_at").values_list("created_at", flat=True).first()
+                    ),
+                    reports.local_date(
+                        Subscription.objects.order_by("created_at").values_list("created_at", flat=True).first()
+                    ),
+                )
+                if local
+            ),
+            default=today,
+        )
+        return [
+            ("Last 3 months", reports.month_start(today, 3)),
+            ("Last 6 months", reports.month_start(today, 6)),
+            ("Last 12 months", reports.month_start(today, 12)),
+            ("This year", today.replace(month=1, day=1)),
+            ("All time", earliest),
+        ]
+
+    def get_context_data(self, **kwargs):
+        today = timezone.localdate()
+        period = reports.Period.from_params(self.request.GET, today)
+        data = reports.build(period)
+        return super().get_context_data(
+            **data,
+            presets=[(label, start.isoformat(), today.isoformat()) for label, start in self.presets(today)],
+            chart=reports.chart(data["trend"]),
+            export_labels=reports.EXPORT_LABELS,
+            months_shown=len(data["trend"]),
+            months_capped=len(period.months()) >= reports.MAX_MONTHS,
+            **kwargs,
+        )
+
+
+class ReportDownloadView(AdminRequiredMixin, View):
+    """One report table as CSV for the chosen period. Admin only and written to the audit log, like the other exports."""
+
+    http_method_names = ["get"]
+
+    def get(self, request, kind):
+        period = reports.Period.from_params(request.GET)
+        table = reports.csv_data(kind, reports.build(period)) if kind in reports.EXPORT_LABELS else None
+        if table is None:
+            raise Http404
+        header, rows = table
+        response, count = exports.csv_response(f"report-{kind}", header, rows, request.GET.get("delimiter", "comma"))
+        audit.record(
+            request,
+            "export.csv",
+            label=f"Report: {reports.EXPORT_LABELS[kind]}",
+            detail=f"{count} rows ({period.start.isoformat()} to {period.end.isoformat()})",
         )
         return response
 

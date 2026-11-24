@@ -46,6 +46,14 @@ class SafeCellTests(TestCase):
         self.assertEqual(exports.safe("line one\r\nline two"), "line one  line two")
         self.assertEqual(exports.safe(timezone.now().date()), timezone.localdate().isoformat())
 
+    def test_decimal_mark_follows_the_separator(self):
+        self.assertEqual(exports.safe(Decimal("1234.5"), ","), "1234,50")
+        self.assertEqual(exports.safe(33.3, ","), "33,3")
+        self.assertEqual(exports.safe(33.3), "33.3")
+        self.assertEqual(exports.safe(7, ","), "7")
+        self.assertEqual(exports.safe("A.B. Funerals", ","), "A.B. Funerals")  # text is never touched
+        self.assertEqual(exports.safe("0.5", ","), "0.5")
+
     def test_aware_times_are_shown_in_local_time(self):
         from datetime import datetime
 
@@ -96,6 +104,14 @@ class LeadExportTests(StaffTestCase):
         older = parse(self.client.get(url("leads", to=(today - timedelta(days=30)).isoformat())))
         self.assertEqual([r[3] for r in older[1:]], ["Old Parlour"])
         self.assertEqual(len(parse(self.client.get(url("leads", **{"from": "not-a-date"})))), 3)
+
+    def test_semicolon_files_use_a_decimal_comma_and_comma_files_a_point(self):
+        sub = live_subscription()
+        Payment.objects.create(subscription=sub, pf_payment_id="p1", status="COMPLETE", amount_gross=Decimal("250.50"))
+        semi = parse(self.client.get(url("subscriptions", delimiter="semicolon")), ";")
+        self.assertEqual(dict(zip(semi[0], semi[1], strict=True))["Paid to date (R)"], "250,50")
+        comma = parse(self.client.get(url("subscriptions")))
+        self.assertEqual(dict(zip(comma[0], comma[1], strict=True))["Paid to date (R)"], "250.50")
 
     def test_semicolon_separator(self):
         make_lead()

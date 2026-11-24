@@ -1,0 +1,134 @@
+{% extends "backoffice/base.html" %}{% load staff_ui %}
+{% block staff %}
+<h1 class="h-section">Reports</h1>
+<p class="mt-2 max-w-3xl text-sm text-slate-600">How the business is doing, worked out from the records in the back-office. Money is in rand and includes VAT unless a heading says otherwise. Admins only.</p>
+
+<form method="get" class="mt-6 flex flex-wrap items-end gap-3">
+  <div><label class="label" for="from">From</label><input class="field" type="date" id="from" name="from" value="{{ period.start|date:'Y-m-d' }}"></div>
+  <div><label class="label" for="to">To</label><input class="field" type="date" id="to" name="to" value="{{ period.end|date:'Y-m-d' }}"></div>
+  <button type="submit" class="btn-primary">Show</button>
+</form>
+<p class="mt-3 text-sm text-slate-600">Quick choices:
+  {% for label, start, end in presets %}<a class="mr-3 font-semibold text-brand-dark underline" href="?from={{ start }}&amp;to={{ end }}">{{ label }}</a>{% endfor %}</p>
+<p class="mt-1 text-sm text-slate-500">Showing {{ period.start|date:"j M Y" }} to {{ period.end|date:"j M Y" }}. Recurring revenue "today" ignores the dates.</p>
+
+<div class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+  <div class="card"><p class="text-sm text-slate-500">Monthly recurring revenue today</p><p class="mt-1 text-3xl font-bold">R{{ revenue.total.mrr|floatformat:"0g" }}</p>
+    <p class="text-xs text-slate-500">{{ revenue.total.customers }} paying customer{{ revenue.total.customers|pluralize }} · R{{ revenue.total.arr|floatformat:"0g" }} a year</p></div>
+  <div class="card"><p class="text-sm text-slate-500">Quote-to-won rate</p><p class="mt-1 text-3xl font-bold">{% if quotes.win_rate is not None %}{{ quotes.win_rate }}%{% else %}n/a{% endif %}</p>
+    <p class="text-xs text-slate-500">{{ quotes.counts.Accepted }} accepted of {{ quotes.decided }} quotation{{ quotes.decided|pluralize }} with an outcome</p></div>
+  <div class="card"><p class="text-sm text-slate-500">Typical time to close</p><p class="mt-1 text-3xl font-bold">{% if close.lead_to_accept.median is not None %}{{ close.lead_to_accept.median }} days{% elif close.quote_to_accept.median is not None %}{{ close.quote_to_accept.median }} days{% else %}n/a{% endif %}</p>
+    <p class="text-xs text-slate-500">{% if close.lead_to_accept.median is not None %}median, lead to accepted{% elif close.quote_to_accept.median is not None %}median, quotation sent to accepted{% else %}nothing accepted in this period{% endif %}</p></div>
+  <div class="card"><p class="text-sm text-slate-500">Average monthly churn</p><p class="mt-1 text-3xl font-bold">{% if churn.avg_logo_churn is not None %}{{ churn.avg_logo_churn }}%{% else %}n/a{% endif %}</p>
+    <p class="text-xs text-slate-500">{{ churn.lost }} customer{{ churn.lost|pluralize }} lost, {{ churn.new }} gained</p></div>
+  <div class="card"><p class="text-sm text-slate-500">Received in this period</p><p class="mt-1 text-3xl font-bold">R{{ cash.net|floatformat:"0g" }}</p>
+    <p class="text-xs text-slate-500">after R{{ cash.refunded|floatformat:"0g" }} refunded</p></div>
+  <div class="card"><p class="text-sm text-slate-500">Revenue at risk now</p><p class="mt-1 text-3xl font-bold {% if revenue.total.at_risk %}text-amber-700{% endif %}">R{{ revenue.total.at_risk|floatformat:"0g" }}</p>
+    <p class="text-xs text-slate-500">a month, from {{ revenue.total.past_due }} customer{{ revenue.total.past_due|pluralize }} whose payment failed</p></div>
+</div>
+
+<section class="mt-10" aria-labelledby="sales-h"><h2 id="sales-h" class="text-xl font-bold">Sales</h2>
+  <div class="mt-4 grid gap-6 lg:grid-cols-2">
+    <div class="card"><h3 class="font-bold">Leads received in this period</h3>
+      <table class="mt-3 w-full text-left text-sm"><tbody class="divide-y divide-line">
+        <tr><th scope="row" class="py-2 font-normal">Received</th><td class="py-2 text-right font-semibold">{{ funnel.total }}</td></tr>
+        <tr><th scope="row" class="py-2 font-normal">Contacted or further on</th><td class="py-2 text-right">{{ funnel.contacted }}</td></tr>
+        <tr><th scope="row" class="py-2 font-normal">Quotation sent</th><td class="py-2 text-right">{{ funnel.quoted }}</td></tr>
+        <tr><th scope="row" class="py-2 font-normal">Won</th><td class="py-2 text-right font-semibold text-emerald-700">{{ funnel.won }}</td></tr>
+        <tr><th scope="row" class="py-2 font-normal">Lost</th><td class="py-2 text-right">{{ funnel.lost }}</td></tr>
+        <tr><th scope="row" class="py-2 font-normal">Still open</th><td class="py-2 text-right">{{ funnel.open }}</td></tr>
+      </tbody></table>
+      <p class="mt-3 text-sm text-slate-600">Win rate (won out of won and lost): <strong>{% if funnel.win_rate is not None %}{{ funnel.win_rate }}%{% else %}n/a{% endif %}</strong>. Won out of all received: <strong>{% if funnel.conversion is not None %}{{ funnel.conversion }}%{% else %}n/a{% endif %}</strong>.</p></div>
+    <div class="card"><h3 class="font-bold">Quotations sent in this period</h3>
+      <table class="mt-3 w-full text-left text-sm"><tbody class="divide-y divide-line">
+        <tr><th scope="row" class="py-2 font-normal">Sent</th><td class="py-2 text-right font-semibold">{{ quotes.sent }}</td></tr>
+        {% for label, n in quotes.counts.items %}<tr><th scope="row" class="py-2 font-normal">{{ label }}</th><td class="py-2 text-right">{{ n }}</td></tr>{% endfor %}
+      </tbody></table>
+      <p class="mt-3 text-sm text-slate-600">Quote-to-won rate: <strong>{% if quotes.win_rate is not None %}{{ quotes.win_rate }}%{% else %}n/a{% endif %}</strong> of those with an outcome; <strong>{% if quotes.accepted_of_sent is not None %}{{ quotes.accepted_of_sent }}%{% else %}n/a{% endif %}</strong> of everything sent. Accepted quotations are worth <strong>R{{ quotes.value_won_monthly|floatformat:"2g" }}</strong> a month.
+        {% if quotes.days_to_decide.n %}They took <strong>{{ quotes.days_to_decide.median }}</strong> days (median) to accept, {{ quotes.days_to_decide.mean }} on average.{% endif %}</p></div>
+  </div>
+  {% if quotes.per_plan %}<div class="mt-6 overflow-x-auto rounded-2xl border border-line bg-white"><table class="w-full text-left text-sm">
+    <caption class="p-3 text-left font-bold">Quotation results by plan</caption>
+    <thead class="border-b border-line text-xs uppercase tracking-wide text-slate-500"><tr><th scope="col" class="p-3">Plan</th><th scope="col" class="p-3 text-right">Sent</th><th scope="col" class="p-3 text-right">Accepted</th><th scope="col" class="p-3 text-right">Declined</th><th scope="col" class="p-3 text-right">Expired</th><th scope="col" class="p-3 text-right">Quote-to-won</th></tr></thead>
+    <tbody class="divide-y divide-line">{% for p in quotes.per_plan %}<tr><th scope="row" class="p-3 font-semibold">{{ p.plan }}</th><td class="p-3 text-right">{{ p.sent }}</td><td class="p-3 text-right">{{ p.accepted }}</td><td class="p-3 text-right">{{ p.declined }}</td><td class="p-3 text-right">{{ p.expired }}</td><td class="p-3 text-right">{% if p.rate is not None %}{{ p.rate }}%{% else %}n/a{% endif %}</td></tr>{% endfor %}</tbody></table></div>{% endif %}
+</section>
+
+<section class="mt-10" aria-labelledby="close-h"><h2 id="close-h" class="text-xl font-bold">Time to close</h2>
+  <p class="mt-1 text-sm text-slate-600">For the {{ close.accepted }} quotation{{ close.accepted|pluralize }} accepted in this period. Days between each step; the median is the middle case, so one slow deal does not distort it.</p>
+  <div class="mt-4 overflow-x-auto rounded-2xl border border-line bg-white"><table class="w-full text-left text-sm">
+    <thead class="border-b border-line text-xs uppercase tracking-wide text-slate-500"><tr><th scope="col" class="p-3">Step</th><th scope="col" class="p-3 text-right">Cases</th><th scope="col" class="p-3 text-right">Median days</th><th scope="col" class="p-3 text-right">Average days</th></tr></thead>
+    <tbody class="divide-y divide-line">{% for label, step in close.steps %}<tr><th scope="row" class="p-3 font-semibold">{{ label }}</th><td class="p-3 text-right">{{ step.n }}</td><td class="p-3 text-right">{{ step.median|default_if_none:"–" }}</td><td class="p-3 text-right">{{ step.mean|default_if_none:"–" }}</td></tr>{% endfor %}</tbody></table></div>
+  <p class="mt-2 text-sm text-slate-600">{{ close.waiting_to_pay }} accepted quotation{{ close.waiting_to_pay|pluralize }} {{ close.waiting_to_pay|pluralize:"is,are" }} still waiting for a first payment (whatever the date).</p>
+</section>
+
+<section class="mt-10" aria-labelledby="mrr-h"><h2 id="mrr-h" class="text-xl font-bold">Recurring revenue by plan</h2>
+  <p class="mt-1 text-sm text-slate-600">What is being charged each month right now. Annual subscriptions count one twelfth. Customers whose payment failed still count, and are shown as at risk; paused customers are listed apart and not counted.</p>
+  <div class="mt-4 overflow-x-auto rounded-2xl border border-line bg-white"><table class="w-full text-left text-sm">
+    <thead class="border-b border-line text-xs uppercase tracking-wide text-slate-500"><tr><th scope="col" class="p-3">Plan</th><th scope="col" class="p-3 text-right">Paying customers</th><th scope="col" class="p-3 text-right">MRR</th>{% if revenue.total.mrr_excl_vat is not None %}<th scope="col" class="p-3 text-right">MRR excl. VAT</th>{% endif %}<th scope="col" class="p-3 text-right">Share</th><th scope="col" class="p-3 text-right">Average each</th><th scope="col" class="p-3 text-right">Payment failed</th><th scope="col" class="p-3 text-right">Paused</th></tr></thead>
+    <tbody class="divide-y divide-line">{% for p in revenue.plans %}<tr><th scope="row" class="p-3 font-semibold">{{ p.plan }}</th><td class="p-3 text-right">{{ p.customers }}</td><td class="p-3 text-right">R{{ p.mrr|floatformat:"2g" }}</td>{% if revenue.total.mrr_excl_vat is not None %}<td class="p-3 text-right">R{{ p.mrr_excl_vat|floatformat:"2g" }}</td>{% endif %}<td class="p-3 text-right">{% if p.share is not None %}{{ p.share }}%{% else %}–{% endif %}</td><td class="p-3 text-right">{% if p.average is not None %}R{{ p.average|floatformat:"2g" }}{% else %}–{% endif %}</td><td class="p-3 text-right">{{ p.past_due }}{% if p.past_due %} (R{{ p.at_risk|floatformat:"2g" }}){% endif %}</td><td class="p-3 text-right">{{ p.paused }}{% if p.paused %} (R{{ p.paused_mrr|floatformat:"2g" }}){% endif %}</td></tr>
+    {% empty %}<tr><td colspan="8" class="p-6 text-center text-slate-500">No paying customers yet.</td></tr>{% endfor %}</tbody>
+    {% if revenue.plans %}<tfoot class="border-t-2 border-line font-bold"><tr><th scope="row" class="p-3">Total</th><td class="p-3 text-right">{{ revenue.total.customers }}</td><td class="p-3 text-right">R{{ revenue.total.mrr|floatformat:"2g" }}</td>{% if revenue.total.mrr_excl_vat is not None %}<td class="p-3 text-right">R{{ revenue.total.mrr_excl_vat|floatformat:"2g" }}</td>{% endif %}<td class="p-3 text-right">100%</td><td class="p-3 text-right">{% if revenue.total.average is not None %}R{{ revenue.total.average|floatformat:"2g" }}{% else %}–{% endif %}</td><td class="p-3 text-right">{{ revenue.total.past_due }}</td><td class="p-3 text-right">{{ revenue.total.paused }}</td></tr></tfoot>{% endif %}</table></div>
+</section>
+
+<section class="mt-10" aria-labelledby="trend-h"><h2 id="trend-h" class="text-xl font-bold">Growth and churn by month</h2>
+  <p class="mt-1 max-w-3xl text-sm text-slate-600">Rebuilt from when each subscription started paying and when it was cancelled, at today's prices, in whole calendar months. It does not know about past price changes, pauses or failed payments, so treat it as a close guide, not an audited figure.{% if months_capped %} Only the most recent {{ months_shown }} months are shown.{% endif %}</p>
+  {% if trend %}
+  <figure class="card mt-4"><figcaption class="text-sm font-semibold">Monthly recurring revenue at the end of each month (tallest bar: R{{ chart.top|floatformat:"0g" }})</figcaption>
+    <div class="mt-3 overflow-x-auto"><svg viewBox="0 0 {{ chart.width }} {{ chart.height }}" class="h-auto w-full min-w-[640px] text-brand-dark" role="img" aria-label="Bar chart of monthly recurring revenue at the end of each month; the same figures are in the table below.">
+      <line x1="0" y1="{{ chart.base }}" x2="{{ chart.width }}" y2="{{ chart.base }}" stroke="currentColor" stroke-opacity="0.3"/>
+      {% for b in chart.bars %}<rect x="{{ b.x|stringformat:'s'|cut:',' }}" y="{{ b.y }}" width="{{ b.w|stringformat:'s'|cut:',' }}" height="{{ b.h }}" rx="2" fill="currentColor"><title>{{ b.title }}</title></rect>{% if b.label %}<text x="{{ b.label_x|stringformat:'s'|cut:',' }}" y="{{ chart.label_y }}" text-anchor="middle" font-size="12" fill="currentColor" fill-opacity="0.7">{{ b.label }}</text>{% endif %}{% endfor %}
+    </svg></div></figure>
+  <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="card"><p class="text-sm text-slate-500">Customers gained</p><p class="mt-1 text-2xl font-bold">{{ churn.new }}</p><p class="text-xs text-slate-500">R{{ churn.mrr_new|floatformat:"2g" }} a month</p></div>
+    <div class="card"><p class="text-sm text-slate-500">Customers lost</p><p class="mt-1 text-2xl font-bold">{{ churn.lost }}</p><p class="text-xs text-slate-500">R{{ churn.mrr_lost|floatformat:"2g" }} a month</p></div>
+    <div class="card"><p class="text-sm text-slate-500">Average customer churn</p><p class="mt-1 text-2xl font-bold">{% if churn.avg_logo_churn is not None %}{{ churn.avg_logo_churn }}%{% else %}n/a{% endif %}</p><p class="text-xs text-slate-500">a month</p></div>
+    <div class="card"><p class="text-sm text-slate-500">Average revenue churn</p><p class="mt-1 text-2xl font-bold">{% if churn.avg_revenue_churn is not None %}{{ churn.avg_revenue_churn }}%{% else %}n/a{% endif %}</p><p class="text-xs text-slate-500">a month</p></div>
+  </div>
+  <div class="mt-4 overflow-x-auto rounded-2xl border border-line bg-white"><table class="w-full text-left text-sm">
+    <thead class="border-b border-line text-xs uppercase tracking-wide text-slate-500"><tr><th scope="col" class="p-3">Month</th><th scope="col" class="p-3 text-right">Customers at end</th><th scope="col" class="p-3 text-right">New</th><th scope="col" class="p-3 text-right">Lost</th><th scope="col" class="p-3 text-right">Customer churn</th><th scope="col" class="p-3 text-right">MRR at end</th><th scope="col" class="p-3 text-right">New MRR</th><th scope="col" class="p-3 text-right">Lost MRR</th><th scope="col" class="p-3 text-right">Revenue churn</th><th scope="col" class="p-3 text-right">Received</th><th scope="col" class="p-3 text-right">Refunded</th></tr></thead>
+    <tbody class="divide-y divide-line">{% for r in trend %}<tr><th scope="row" class="whitespace-nowrap p-3 font-semibold">{{ r.month|date:"M Y" }}</th><td class="p-3 text-right">{{ r.customers_end }}</td><td class="p-3 text-right">{{ r.new }}</td><td class="p-3 text-right {% if r.lost %}text-red-700{% endif %}">{{ r.lost }}</td><td class="p-3 text-right">{% if r.logo_churn is not None %}{{ r.logo_churn }}%{% else %}–{% endif %}</td><td class="p-3 text-right">R{{ r.mrr_end|floatformat:"2g" }}</td><td class="p-3 text-right">R{{ r.mrr_new|floatformat:"2g" }}</td><td class="p-3 text-right">R{{ r.mrr_lost|floatformat:"2g" }}</td><td class="p-3 text-right">{% if r.revenue_churn is not None %}{{ r.revenue_churn }}%{% else %}–{% endif %}</td><td class="p-3 text-right">R{{ r.collected|floatformat:"2g" }}</td><td class="p-3 text-right">R{{ r.refunded|floatformat:"2g" }}</td></tr>{% endfor %}</tbody></table></div>
+  {% endif %}
+</section>
+
+<section class="mt-10" aria-labelledby="cash-h"><h2 id="cash-h" class="text-xl font-bold">Money received</h2>
+  <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="card"><p class="text-sm text-slate-500">Payments received</p><p class="mt-1 text-2xl font-bold">R{{ cash.gross|floatformat:"2g" }}</p><p class="text-xs text-slate-500">{{ cash.payments }} payment{{ cash.payments|pluralize }}</p></div>
+    <div class="card"><p class="text-sm text-slate-500">PayFast fees</p><p class="mt-1 text-2xl font-bold">R{{ cash.fees|floatformat:"2g" }}</p><p class="text-xs text-slate-500">where PayFast reported them</p></div>
+    <div class="card"><p class="text-sm text-slate-500">Refunded</p><p class="mt-1 text-2xl font-bold">R{{ cash.refunded|floatformat:"2g" }}</p><p class="text-xs text-slate-500">{{ cash.refund_count }} refund{{ cash.refund_count|pluralize }}</p></div>
+    <div class="card"><p class="text-sm text-slate-500">Failed payments</p><p class="mt-1 text-2xl font-bold">{{ cash.failed }}</p><p class="text-xs text-slate-500">{% if cash.failure_rate is not None %}{{ cash.failure_rate }}% of attempts{% else %}no attempts{% endif %}</p></div>
+  </div>
+</section>
+
+<section class="mt-10" aria-labelledby="src-h"><h2 id="src-h" class="text-xl font-bold">Where leads come from</h2>
+  <p class="mt-1 text-sm text-slate-600">Leads received in this period, by the campaign source on the link they arrived through (UTM source). "Direct / not tracked" means the link carried none.</p>
+  <div class="mt-4 overflow-x-auto rounded-2xl border border-line bg-white"><table class="w-full text-left text-sm">
+    <thead class="border-b border-line text-xs uppercase tracking-wide text-slate-500"><tr><th scope="col" class="p-3">Source</th><th scope="col" class="p-3 text-right">Leads</th><th scope="col" class="p-3 text-right">Quoted</th><th scope="col" class="p-3 text-right">Won</th><th scope="col" class="p-3 text-right">Lost</th><th scope="col" class="p-3 text-right">Win rate</th></tr></thead>
+    <tbody class="divide-y divide-line">{% for r in sources %}<tr><th scope="row" class="p-3 font-semibold">{{ r.source }}</th><td class="p-3 text-right">{{ r.leads }}</td><td class="p-3 text-right">{{ r.quoted }}</td><td class="p-3 text-right">{{ r.won }}</td><td class="p-3 text-right">{{ r.lost }}</td><td class="p-3 text-right">{% if r.win_rate is not None %}{{ r.win_rate }}%{% else %}n/a{% endif %}</td></tr>
+    {% empty %}<tr><td colspan="6" class="p-6 text-center text-slate-500">No leads in this period.</td></tr>{% endfor %}</tbody></table></div>
+</section>
+
+<section class="mt-10" aria-labelledby="ops-h"><h2 id="ops-h" class="text-xl font-bold">Hosting right now</h2>
+  <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <a class="card block hover:border-brand" href="{% url 'backoffice:instances' %}?status=live"><p class="text-sm text-slate-500">Live instances</p><p class="mt-1 text-2xl font-bold">{{ ops.live }}</p></a>
+    <a class="card block hover:border-brand" href="{% url 'backoffice:instances' %}?status=open"><p class="text-sm text-slate-500">Waiting for set-up</p><p class="mt-1 text-2xl font-bold">{{ ops.waiting }}</p><p class="text-xs text-slate-500">{% if ops.avg_wait is not None %}{{ ops.avg_wait }} days on average{% else %}nothing waiting{% endif %}</p></a>
+    <a class="card block hover:border-brand" href="{% url 'backoffice:instances' %}?show=outdated"><p class="text-sm text-slate-500">Out of date</p><p class="mt-1 text-2xl font-bold">{{ ops.outdated }}</p></a>
+    <a class="card block hover:border-brand" href="{% url 'backoffice:instances' %}"><p class="text-sm text-slate-500">Paying, with no record</p><p class="mt-1 text-2xl font-bold {% if ops.missing %}text-amber-700{% endif %}">{{ ops.missing }}</p></a>
+  </div>
+</section>
+
+<section class="card mt-10" aria-labelledby="dl-h"><h2 id="dl-h" class="text-xl font-bold">Download the data</h2>
+  <p class="mt-1 text-sm text-slate-600">The tables above as CSV files for the period shown. Each download is recorded in the audit log. The semicolon version (columns split by ; and amounts like 1500,00) is the one South African Excel normally opens correctly.</p>
+  <ul class="mt-4 divide-y divide-line text-sm">{% for key, label in export_labels.items %}
+    <li class="flex flex-wrap items-center justify-between gap-2 py-2"><span>{{ label }}</span><span class="space-x-4"><a class="font-semibold text-brand-dark underline" href="{% url 'backoffice:report_csv' key %}?from={{ period.start|date:'Y-m-d' }}&amp;to={{ period.end|date:'Y-m-d' }}">CSV</a><a class="font-semibold text-brand-dark underline" href="{% url 'backoffice:report_csv' key %}?from={{ period.start|date:'Y-m-d' }}&amp;to={{ period.end|date:'Y-m-d' }}&amp;delimiter=semicolon">CSV (semicolons, decimal comma)</a></span></li>{% endfor %}</ul></section>
+
+<section class="mt-10 max-w-3xl text-sm text-slate-600" aria-labelledby="how-h"><h2 id="how-h" class="text-xl font-bold text-ink">How these are worked out</h2>
+  <dl class="mt-3 space-y-3">
+    <div><dt class="font-semibold text-ink">Quote-to-won rate</dt><dd>Quotations sent in the period that were accepted, divided by those that reached an outcome: accepted, declined, or expired unanswered. Quotations still open, and ones you withdrew, are left out so a busy week does not look like a bad one. "Of everything sent" is the stricter version.</dd></div>
+    <div><dt class="font-semibold text-ink">Lead win rate</dt><dd>Leads received in the period now marked Won, out of those marked Won or Lost. Accepting a quotation marks its lead Won. Lost leads are deleted after the retention period, so very old periods look better than they were.</dd></div>
+    <div><dt class="font-semibold text-ink">Time to close</dt><dd>Measured on quotations accepted in the period. "Lead to accepted" needs the quotation to be linked to a lead. "First payment to live" compares the first payment with the go-live date recorded on the hosted instance.</dd></div>
+    <div><dt class="font-semibold text-ink">Monthly recurring revenue (MRR)</dt><dd>The recurring price of every paying subscription expressed per month, as charged (VAT included). It is what is billed, not what has been received, and it leaves out the once-off first-payment extras. The excl. VAT figure appears once a VAT number is set.</dd></div>
+    <div><dt class="font-semibold text-ink">Customer churn</dt><dd>Customers cancelled during a month, out of the customers who were paying at the start of that month. Revenue churn is the same measured in rand. The average is taken over months that started with at least one customer.</dd></div>
+    <div><dt class="font-semibold text-ink">Received</dt><dd>Completed PayFast payments by the date they arrived, less refunds by the date they were processed.</dd></div>
+    <div><dt class="font-semibold text-ink">Small numbers</dt><dd>With only a handful of leads or customers a single deal moves a percentage a long way. Read the counts beside each rate.</dd></div>
+  </dl></section>
+{% endblock %}
