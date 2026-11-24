@@ -67,10 +67,16 @@ Admins open **Audit log** in the back-office to see who did what, and when.
 - **Staff actions** are written the moment they succeed: lead changes, follow-ups, creating/editing/sending/cancelling/duplicating quotations, saved offers, pausing/resuming/cancelling subscriptions, raising/processing/declining refunds, and sign-ins, sign-outs and failed sign-ins. Each entry has the username, the time, what it was on, a short detail and the address the request came from. Passwords are never stored. Bulk actions in the Django admin are logged too ("via the site admin").
 - **Clients and PayFast** (a quotation viewed or accepted, a payment arriving) are shown alongside, marked client/system.
 - Staff history from before this update is kept but shows "staff (before the audit log)", because it never recorded who.
-- Filter by person, area, source, dates or text. The page shows the newest 1 000 entries from each source; narrow the dates for older ones.
-- Entries cannot be edited or deleted in the back-office, and the Django admin shows them read-only. Entries stay when a user account is deleted (the username is copied into the entry).
-- Not recorded: changes made directly in the database or to users and groups in the Django admin (the Django admin keeps its own history for objects you edit there).
-- The log contains staff usernames and IP addresses. Mention that in your internal privacy notes if you need to; it is visible to Admins only.
+- Filter by person, area, source, dates or text. The page pages through **every** entry (the earlier 1 000-per-source cap is gone); counting and filtering are done by the database.
+- **Users and roles:** adding, changing or deleting a user or a group in the Django admin (this is how roles are changed) is now logged under "Users and roles", with who did it, the user's new role, and whether the account is disabled. Passwords are never recorded, only that the password was changed.
+- Entries cannot be edited, and the Django admin shows them read-only. Entries stay when a user account is deleted (the username is copied into the entry).
+- **Retention:** staff entries are kept for `AUDIT_RETENTION_MONTHS` (default 24; `0` keeps everything). Because HCode has no scheduler, an Admin clears them: the audit page shows a **Delete them now** button when anything is past the period, or run `python manage.py purge_audit_log` (add `--dry-run` to see the count first). The clean-up writes its own entry ("Deleted old audit entries") that is not deleted. Client and PayFast events are business records and are not purged.
+- **Still not recorded:** changes made directly in the database, with `manage.py shell` or `createsuperuser`, and changes by programs other than the site admin. The Django admin keeps its own history for objects you edit there.
+- **Before the audit log:** staff events from before you applied the audit-log update never recorded who, so they show "staff (before the audit log)". That cannot be repaired afterwards.
+- **Privacy:** the log holds staff usernames and IP addresses. The public privacy notice now says so (section "Our staff and administrators", notice version 1.1) and states the retention period from `AUDIT_RETENTION_MONTHS`. If you change the period, the notice follows automatically. Review the wording with your information officer or lawyer. The `django-axes` access log (a second copy of every address that signs in) is switched off, because this audit log replaces it; axes still keeps failed attempts briefly to block guessing.
+
+## Back-office menu
+The main menu holds the day-to-day pages (Dashboard, Follow-ups, Leads, Quotations, Customers, Instances, Subscriptions). Admins also get an **Admin** menu (Refunds, Audit log, Team, and Site admin for superusers) and everyone has an account menu with their username and Sign out. Menus close when you click elsewhere or press Esc.
 
 ## Hosted instances
 Each client runs their own copy of the platform on your hosting. **Instances** in the back-office keeps one record per client so nothing is lost between "paid" and "live".

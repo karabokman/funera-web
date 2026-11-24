@@ -14,6 +14,14 @@
       <li><strong>Abuse protection:</strong> a keyed (one-way) hash of your IP address, used only to limit repeated form submissions. We do not store your IP address in the enquiry.</li>
       <li><strong>Where you came from:</strong> the page or campaign link that brought you to the form, to understand which marketing works.</li>
     </ul>
+    <h2>Our staff and administrators</h2>
+    <p>Everyone who signs in to our back-office to manage enquiries, quotations and customer accounts has a personal login. To keep your information secure and to show who did what, we record, for each of them:</p>
+    <ul>
+      <li>their <strong>username</strong>, name and work e-mail address;</li>
+      <li>an <strong>audit entry</strong> every time they sign in, sign out or fail to sign in, and every time they change a record (for example sending a quotation or processing a refund), with the date and time and the <strong>IP address</strong> they were using;</li>
+      <li>for failed sign-ins, the username that was typed and the IP address, which is also used to block repeated guessing for a short time.</li>
+    </ul>
+    <p>This log is visible only to our administrators. {% if site.audit_retention_months %}Entries are deleted after {{ site.audit_retention_months }} months.{% else %}Entries are kept for as long as the account exists.{% endif %} The log does not contain passwords, and it records no IP address for visitors or customers who are not staff.</p>
     <h2>Cookies and analytics</h2>
     <p>This website sets no tracking cookies.{% if site.plausible_domain %} We use Plausible Analytics, a cookie-free service that counts visits without identifying individuals.{% endif %}</p>
     <h2>Who sees your information</h2>

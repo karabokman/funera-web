@@ -131,7 +131,7 @@ class SalesCannotMoveMoney(TestCase):
         page = self.client.get(reverse("backoffice:dashboard")).content.decode()
         self.assertNotIn(reverse("backoffice:refunds"), page)
         self.assertNotIn(reverse("backoffice:team"), page)
-        self.assertIn("sales · Sales", page)
+        self.assertIn("Signed in as Sales", page)
 
     def test_offers_page_is_read_only_for_sales(self):
         make_offer()

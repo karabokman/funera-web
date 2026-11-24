@@ -685,16 +685,31 @@ class AuditLogView(AdminRequiredMixin, StaffPage):
 
     def get_context_data(self, **kwargs):
         filters = audit_log.Filters.from_request(self.request.GET)
-        rows = audit_log.rows(filters)
         return super().get_context_data(
-            page=paginate(self.request, rows),
+            page=paginate(self.request, audit_log.Feed(filters)),
             f=filters,
             areas=[(value, label) for value, label, _ in audit.AREAS],
-            capped=len(rows) >= audit_log.LIMIT,
-            limit=audit_log.LIMIT,
             staff_names=audit_log.staff_names(),
+            expired=audit.expired().count(),
+            retention_months=settings.AUDIT_RETENTION_MONTHS,
             **kwargs,
         )
+
+
+class AuditPurgeView(AdminRequiredMixin, View):
+    """Delete staff entries past the retention period (there is no scheduler, so an Admin presses this now and then)."""
+
+    http_method_names = ["post"]
+
+    def post(self, request):
+        count = audit.purge(request)
+        messages.success(
+            request,
+            f"Deleted {count} audit entries older than {settings.AUDIT_RETENTION_MONTHS} months."
+            if count
+            else "Nothing to delete.",
+        )
+        return redirect("backoffice:audit")
 
 
 # ------------------------------------------------------------------------------------------------ hosted instances

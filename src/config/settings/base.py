@@ -53,6 +53,9 @@ AUTHENTICATION_BACKENDS = ["axes.backends.AxesStandaloneBackend", "django.contri
 AXES_FAILURE_LIMIT = 5
 AXES_COOLOFF_TIME = 1  # hours
 AXES_LOCKOUT_PARAMETERS = ["ip_address", "username"]
+AXES_DISABLE_ACCESS_LOG = (
+    True  # our own audit log records sign-ins, so axes need not keep a second copy of every address
+)
 
 ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"
@@ -105,8 +108,9 @@ CONTACT_EMAIL = env("CONTACT_EMAIL", default="hello@example.com")  # shown on th
 CONTACT_PHONE = env("CONTACT_PHONE", default="")
 INFORMATION_OFFICER_EMAIL = env("INFORMATION_OFFICER_EMAIL", default="")  # POPIA: shown in the privacy notice
 SALES_NOTIFY_EMAILS = env.list("SALES_NOTIFY_EMAILS", default=[])  # who is told about each new enquiry
-PRIVACY_NOTICE_VERSION = "1.0"
+PRIVACY_NOTICE_VERSION = "1.1"
 LEAD_RETENTION_MONTHS = env.int("LEAD_RETENTION_MONTHS", default=24)
+AUDIT_RETENTION_MONTHS = env.int("AUDIT_RETENTION_MONTHS", default=24)  # staff audit entries (0 = keep for ever)
 LEAD_RATE_LIMIT_PER_HOUR = env.int("LEAD_RATE_LIMIT_PER_HOUR", default=5)  # per visitor (hashed IP)
 PLAUSIBLE_DOMAIN = env("PLAUSIBLE_DOMAIN", default="")  # optional cookie-free analytics (plausible.io); empty = none
 PLAUSIBLE_SCRIPT_URL = env("PLAUSIBLE_SCRIPT_URL", default="https://plausible.io/js/script.js")

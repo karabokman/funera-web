@@ -30,3 +30,18 @@
     });
   }
 })();
+
+// Back-office: drop-down menus close on an outside click, and forms marked data-confirm ask first.
+document.addEventListener("click", function (e) {
+  document.querySelectorAll("details[data-menu][open]").forEach(function (d) {
+    if (!d.contains(e.target)) d.removeAttribute("open");
+  });
+});
+document.addEventListener("submit", function (e) {
+  var message = e.target.getAttribute && e.target.getAttribute("data-confirm");
+  if (message && !window.confirm(message)) e.preventDefault();
+});
+document.addEventListener("keydown", function (e) {
+  if (e.key !== "Escape") return;
+  document.querySelectorAll("details[data-menu][open]").forEach(function (d) { d.removeAttribute("open"); });
+});

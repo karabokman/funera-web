@@ -1,5 +1,10 @@
 from django.contrib import admin
+from django.contrib.admin.sites import NotRegistered
+from django.contrib.auth import get_user_model
+from django.contrib.auth.admin import GroupAdmin, UserAdmin
+from django.contrib.auth.models import Group
 
+from . import audit, roles
 from .models import AuditEntry
 
 
@@ -20,3 +25,55 @@ class AuditEntryAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+class AuditedAdminMixin:
+    """Writes who changed users and groups in the site admin to the audit log (this is how roles are changed)."""
+
+    audit_prefix = ""
+
+    def _state(self, obj) -> str:
+        return ""
+
+    def log_addition(self, request, obj, message):
+        entry = super().log_addition(request, obj, message)
+        audit.record(request, f"{self.audit_prefix}.created", obj, self._state(obj))
+        return entry
+
+    def log_change(self, request, obj, message):
+        entry = super().log_change(request, obj, message)
+        said = entry.get_change_message() if entry else ""
+        audit.record(request, f"{self.audit_prefix}.changed", obj, f"{said} {self._state(obj)}".strip())
+        return entry
+
+    def log_deletions(self, request, queryset):
+        for obj in queryset:
+            audit.record(request, f"{self.audit_prefix}.deleted", obj)
+        return super().log_deletions(request, queryset)
+
+    def log_deletion(self, request, obj, object_repr):
+        audit.record(request, f"{self.audit_prefix}.deleted", label=object_repr)
+        return super().log_deletion(request, obj, object_repr)
+
+
+class AuditedUserAdmin(AuditedAdminMixin, UserAdmin):
+    audit_prefix = "user"
+
+    def _state(self, user) -> str:
+        return f"Role now: {roles.role(user)}{'' if user.is_active else ', account disabled'}."
+
+
+class AuditedGroupAdmin(AuditedAdminMixin, GroupAdmin):
+    audit_prefix = "group"
+
+    def _state(self, group) -> str:
+        return f"{group.permissions.count()} permissions."
+
+
+User = get_user_model()
+for model, admin_class in ((User, AuditedUserAdmin), (Group, AuditedGroupAdmin)):
+    try:
+        admin.site.unregister(model)
+    except NotRegistered:
+        pass
+    admin.site.register(model, admin_class)

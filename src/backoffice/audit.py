@@ -3,6 +3,13 @@ action has succeeded, so the log shows what actually happened rather than what w
 
 from __future__ import annotations
 
+from datetime import timedelta
+
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
+from django.utils import timezone
+
 from billing.models import Customer, Refund, Subscription
 from billing.services import client_ip
 from instances.models import Instance
@@ -40,6 +47,13 @@ ACTIONS = {
     "refund.processed": "Processed refund",
     "refund.failed": "Refund failed at PayFast",
     "refund.declined": "Declined refund",
+    "user.created": "Created a user (site admin)",
+    "user.changed": "Changed a user (site admin)",
+    "user.deleted": "Deleted a user (site admin)",
+    "group.created": "Created a group (site admin)",
+    "group.changed": "Changed a group (site admin)",
+    "group.deleted": "Deleted a group (site admin)",
+    "audit.purged": "Deleted old audit entries",
 }
 
 # the areas offered as a filter on the audit page: (value, label, object types it covers)
@@ -50,7 +64,8 @@ AREAS = [
     ("subscription", "Subscriptions", ("subscription",)),
     ("instance", "Hosted instances", ("instance",)),
     ("refund", "Refunds", ("refund",)),
-    ("staff", "Sign-ins", ("staff",)),
+    ("user", "Users and roles", ("user", "group")),
+    ("staff", "Sign-ins and log clean-up", ("staff",)),
 ]
 
 
@@ -70,6 +85,10 @@ def describe(obj) -> tuple[str, int | None, str]:
         return "instance", obj.pk, f"{obj.customer.business_name} (hosted instance)"
     if isinstance(obj, Customer):
         return "customer", obj.pk, obj.business_name
+    if isinstance(obj, get_user_model()):
+        return "user", obj.pk, obj.get_username()
+    if isinstance(obj, Group):
+        return "group", obj.pk, obj.name
     return "", None, str(obj) if obj is not None else ""
 
 
@@ -78,7 +97,7 @@ def record(request, action: str, obj=None, detail: str = "", *, user=None, label
     if user is not None and not getattr(user, "is_authenticated", False):
         user = None
     kind, pk, auto_label = describe(obj)
-    if action.startswith("staff."):
+    if action.startswith(("staff.", "audit.")):
         kind = "staff"
     return AuditEntry.objects.create(
         actor=user,
@@ -90,3 +109,24 @@ def record(request, action: str, obj=None, detail: str = "", *, user=None, label
         detail=detail[:300],
         ip_address=(client_ip(request) or None) if request is not None else None,
     )
+
+
+def retention_cutoff(months: int | None = None):
+    months = settings.AUDIT_RETENTION_MONTHS if months is None else months
+    return timezone.now() - timedelta(days=int(months) * 30)
+
+
+def expired(months: int | None = None):
+    """Staff audit entries older than the retention period (0 months means keep everything)."""
+    if (settings.AUDIT_RETENTION_MONTHS if months is None else months) <= 0:
+        return AuditEntry.objects.none()
+    return AuditEntry.objects.filter(created_at__lt=retention_cutoff(months))
+
+
+def purge(request=None, months: int | None = None, *, user=None) -> int:
+    """Delete entries past the retention period, then log that it happened (the new entry is not itself deleted)."""
+    count, _ = expired(months).delete()
+    if count:
+        months = settings.AUDIT_RETENTION_MONTHS if months is None else months
+        record(request, "audit.purged", detail=f"{count} entries older than {months} months", user=user)
+    return count

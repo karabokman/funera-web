@@ -20,6 +20,7 @@ def site(request):
             "io_email": settings.INFORMATION_OFFICER_EMAIL,
             "notice_version": settings.PRIVACY_NOTICE_VERSION,
             "retention_months": settings.LEAD_RETENTION_MONTHS,
+            "audit_retention_months": settings.AUDIT_RETENTION_MONTHS,
             "plausible_domain": settings.PLAUSIBLE_DOMAIN,
             "vat_number": settings.VAT_NUMBER,
             "vat_percent": f"{settings.VAT_RATE * 100:g}",

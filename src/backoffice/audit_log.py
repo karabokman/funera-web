@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 
+from django.db.models import Q
 from django.urls import reverse
 from django.utils import timezone
 
@@ -19,7 +20,6 @@ from quotes.models import QuoteEvent
 from . import audit
 from .models import AuditEntry
 
-LIMIT = 1000  # newest rows kept per source; the page says when this was reached
 SOURCES = [("staff", "Staff"), ("client", "Clients and system")]
 CLIENT_ACTORS = ("client", "customer", "payfast", "system")
 
@@ -91,110 +91,150 @@ def _row(when, who, what, kind, pk, label, detail, source, ip=""):
     }
 
 
-def rows(f: Filters) -> list[dict]:
-    start, end = f.window()
+class Feed:
+    """The audit page's rows, newest first, from all three sources, without loading everything.
 
-    def windowed(qs):
-        if start:
-            qs = qs.filter(created_at__gte=start)
-        if end:
-            qs = qs.filter(created_at__lt=end)
+    Counting and filtering happen in the database. Showing page N takes the newest N x page-size rows of each source and
+    merges them, so every entry can be reached (there is no cap), and the cost grows only with how deep you page.
+    """
+
+    def __init__(self, f: Filters):
+        self.f = f
+        start, end = f.window()
+        self.start, self.end = start, end
+        self.types = next((t for value, _, t in audit.AREAS if value == f.area), None)
+        self.first = AuditEntry.objects.order_by("created_at").values_list("created_at", flat=True).first()
+        self.staff = self._staff_qs() if f.source in ("", "staff") else None
+        self.subs = (
+            self._sub_qs()
+            if f.source in ("", "client") and (self.types is None or "subscription" in self.types)
+            else None
+        )
+        self.quotes = (
+            self._quote_qs() if f.source in ("", "client") and (self.types is None or "quote" in self.types) else None
+        )
+        self._count: int | None = None
+
+    def _window(self, qs):
+        if self.start:
+            qs = qs.filter(created_at__gte=self.start)
+        if self.end:
+            qs = qs.filter(created_at__lt=self.end)
         return qs
 
-    result: list[dict] = []
-    types = next((t for value, _, t in audit.AREAS if value == f.area), None)
-
-    if f.source in ("", "staff"):
-        qs = windowed(AuditEntry.objects.all())
+    def _staff_qs(self):
+        f, qs = self.f, self._window(AuditEntry.objects.all())
         if f.who:
             qs = qs.filter(actor_name__icontains=f.who)
-        if types:
-            qs = qs.filter(object_type__in=types)
+        if self.types:
+            qs = qs.filter(object_type__in=self.types)
         if f.q:
-            qs = (
-                qs.filter(object_label__icontains=f.q)
-                | qs.filter(detail__icontains=f.q)
-                | qs.filter(action__icontains=f.q)
-            )
-        for e in qs.order_by("-created_at")[:LIMIT]:
-            who = e.actor_name or "unknown"
-            what = audit.ACTIONS.get(e.action, e.action)
-            result.append(
-                _row(
-                    e.created_at,
-                    who,
-                    what,
-                    e.object_type,
-                    e.object_id,
-                    e.object_label,
-                    e.detail,
-                    "staff",
-                    e.ip_address or "",
-                )
-            )
+            qs = qs.filter(Q(object_label__icontains=f.q) | Q(detail__icontains=f.q) | Q(action__icontains=f.q))
+        return qs.order_by("-created_at", "-id")
 
-    if f.source in ("", "client"):
-        first = AuditEntry.objects.order_by("created_at").values_list("created_at", flat=True).first()
-        events = _events(f, windowed, first, types)
+    def _sub_qs(self):
+        """Client, PayFast and system events, plus staff events from before the audit log existed (who is then unknown)."""
+        f = self.f
+        legacy = Q(actor=SubscriptionEvent.Actor.STAFF)
+        if self.first is not None:
+            legacy &= Q(created_at__lt=self.first)  # later staff events are already in the audit log with the real name
+        qs = self._window(SubscriptionEvent.objects.select_related("subscription__customer")).filter(
+            Q(actor__in=CLIENT_ACTORS) | legacy
+        )
         if f.who:
-            events = [r for r in events if f.who.lower() in r["who"].lower()]
-        result += events
-
-    result.sort(key=lambda r: r["when"], reverse=True)
-    return result
-
-
-def _events(f: Filters, windowed, first_audit, types) -> list[dict]:
-    """Client, PayFast and system events, plus staff events from before the audit log started (who is then unknown)."""
-    out: list[dict] = []
-
-    def match(*texts):
-        return not f.q or any(f.q.lower() in (t or "").lower() for t in texts)
-
-    if types is None or "subscription" in types:
-        qs = windowed(SubscriptionEvent.objects.select_related("subscription__customer"))
-        for e in qs.order_by("-created_at")[:LIMIT]:
-            legacy_staff = e.actor == SubscriptionEvent.Actor.STAFF
-            if legacy_staff and first_audit is not None and e.created_at >= first_audit:
-                continue  # already in the audit log with the real name
-            if not legacy_staff and e.actor not in CLIENT_ACTORS:
-                continue
-            label = f"{e.subscription.reference} · {e.subscription.customer.business_name}"
-            if not match(label, e.detail, e.kind):
-                continue
-            who = "staff (before the audit log)" if legacy_staff else e.get_actor_display().lower()
-            out.append(
-                _row(
-                    e.created_at,
-                    who,
-                    e.kind.replace("_", " ").capitalize(),
-                    "subscription",
-                    e.subscription_id,
-                    label,
-                    e.detail,
-                    "client",
-                )
+            qs = qs.filter(actor__icontains=f.who)
+        if f.q:
+            qs = qs.filter(
+                Q(subscription__reference__icontains=f.q)
+                | Q(subscription__customer__business_name__icontains=f.q)
+                | Q(detail__icontains=f.q)
+                | Q(kind__icontains=f.q)
             )
-    if types is None or "quote" in types:
-        qs = windowed(QuoteEvent.objects.select_related("quote"))
-        for e in qs.order_by("-created_at")[:LIMIT]:
-            client = e.actor == "client"
-            if not client and (first_audit is None or e.created_at >= first_audit):
-                continue  # staff event already in the audit log with the real name (or a system note)
-            label = f"{e.quote.number} · {e.quote.business_name}"
-            if not match(label, e.detail, e.kind):
-                continue
-            who = "client" if client else f"{e.actor or 'staff'} (before the audit log)"
-            out.append(
-                _row(
-                    e.created_at,
-                    who,
-                    e.kind.replace("_", " ").capitalize(),
-                    "quote",
-                    e.quote_id,
-                    label,
-                    e.detail,
-                    "client",
-                )
+        return qs.order_by("-created_at", "-id")
+
+    def _quote_qs(self):
+        f = self.f
+        keep = Q(actor="client")
+        if self.first is not None:
+            keep |= Q(created_at__lt=self.first)
+        qs = self._window(QuoteEvent.objects.select_related("quote")).filter(keep)
+        if f.who:
+            qs = qs.filter(actor__icontains=f.who)
+        if f.q:
+            qs = qs.filter(
+                Q(quote__number__icontains=f.q)
+                | Q(quote__business_name__icontains=f.q)
+                | Q(detail__icontains=f.q)
+                | Q(kind__icontains=f.q)
             )
-    return out
+        return qs.order_by("-created_at", "-id")
+
+    def __len__(self) -> int:
+        if self._count is None:
+            self._count = sum(qs.count() for qs in (self.staff, self.subs, self.quotes) if qs is not None)
+        return self._count
+
+    def __getitem__(self, key):
+        if not isinstance(key, slice):
+            return self[key : key + 1][0]
+        start, stop, _ = key.indices(len(self))
+        return self._merged(stop)[start:stop]
+
+    def _merged(self, upto: int) -> list[dict]:
+        out: list[dict] = []
+        if self.staff is not None:
+            for e in self.staff[:upto]:
+                out.append(
+                    _row(
+                        e.created_at,
+                        e.actor_name or "unknown",
+                        audit.ACTIONS.get(e.action, e.action),
+                        e.object_type,
+                        e.object_id,
+                        e.object_label,
+                        e.detail,
+                        "staff",
+                        e.ip_address or "",
+                    )
+                )
+        if self.subs is not None:
+            for e in self.subs[:upto]:
+                label = f"{e.subscription.reference} · {e.subscription.customer.business_name}"
+                legacy = e.actor == SubscriptionEvent.Actor.STAFF
+                who = "staff (before the audit log)" if legacy else e.get_actor_display().lower()
+                out.append(
+                    _row(
+                        e.created_at,
+                        who,
+                        e.kind.replace("_", " ").capitalize(),
+                        "subscription",
+                        e.subscription_id,
+                        label,
+                        e.detail,
+                        "client",
+                    )
+                )
+        if self.quotes is not None:
+            for e in self.quotes[:upto]:
+                label = f"{e.quote.number} · {e.quote.business_name}"
+                who = "client" if e.actor == "client" else f"{e.actor or 'staff'} (before the audit log)"
+                out.append(
+                    _row(
+                        e.created_at,
+                        who,
+                        e.kind.replace("_", " ").capitalize(),
+                        "quote",
+                        e.quote_id,
+                        label,
+                        e.detail,
+                        "client",
+                    )
+                )
+        out.sort(key=lambda r: r["when"], reverse=True)
+        return out
+
+
+def rows(f: Filters) -> list[dict]:
+    """Every matching row (used by tests and small exports; the page itself pages through ``Feed``)."""
+    feed = Feed(f)
+    return feed[0 : len(feed)]

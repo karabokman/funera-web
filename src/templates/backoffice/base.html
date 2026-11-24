@@ -3,9 +3,9 @@
 {% block site_header %}
 <header class="border-b border-line bg-white print:hidden">
   <div class="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-6">
-    <a href="{% url 'backoffice:dashboard' %}" class="flex items-center gap-3" aria-label="Funera back-office"><img src="{% static 'img/logo-compact.png' %}" alt="{{ site.name }}" width="686" height="257" class="h-9 w-auto"><span class="rounded-full bg-brand-soft px-2.5 py-0.5 text-xs font-semibold text-brand-dark">Back-office</span></a>
+    <a href="{% url 'backoffice:dashboard' %}" class="flex items-center gap-3" aria-label="Funera back-office"><img src="{% static 'img/logo-compact.png' %}" alt="{{ site.name }}" width="686" height="257" class="h-9 w-auto"><span class="hidden rounded-full bg-brand-soft px-2.5 py-0.5 text-xs font-semibold text-brand-dark xl:inline">Back-office</span></a>
     {% if request.user.is_authenticated %}
-    <nav class="flex flex-1 flex-wrap items-center gap-1 text-sm" aria-label="Back-office">
+    <nav class="order-3 flex basis-full flex-wrap items-center lg:order-none lg:flex-1 lg:basis-0 gap-0.5 text-sm [&_.nav-link]:px-2 xl:gap-1 xl:[&_.nav-link]:px-3" aria-label="Back-office">
       {% with name=request.resolver_match.url_name %}
       <a class="nav-link {% if name == 'dashboard' %}!bg-brand-soft !text-brand-dark{% endif %}" href="{% url 'backoffice:dashboard' %}">Dashboard</a>
       <a class="nav-link {% if name == 'follow_ups' %}!bg-brand-soft !text-brand-dark{% endif %}" href="{% url 'backoffice:follow_ups' %}">Follow-ups{% follow_up_badge as due %}{% if due %} <span class="ml-1 rounded-full bg-red-600 px-1.5 py-0.5 text-xs font-bold text-white" aria-label="{{ due }} due">{{ due }}</span>{% endif %}</a>
@@ -14,16 +14,22 @@
       <a class="nav-link {% if 'customer' in name %}!bg-brand-soft !text-brand-dark{% endif %}" href="{% url 'backoffice:customers' %}">Customers</a>
       <a class="nav-link {% if 'instance' in name %}!bg-brand-soft !text-brand-dark{% endif %}" href="{% url 'backoffice:instances' %}">Instances</a>
       <a class="nav-link {% if 'subscription' in name %}!bg-brand-soft !text-brand-dark{% endif %}" href="{% url 'backoffice:subscriptions' %}">Subscriptions</a>
-      {% if request.user|is_admin %}<a class="nav-link {% if 'refund' in name %}!bg-brand-soft !text-brand-dark{% endif %}" href="{% url 'backoffice:refunds' %}">Refunds</a>
-      <a class="nav-link {% if name == 'audit' %}!bg-brand-soft !text-brand-dark{% endif %}" href="{% url 'backoffice:audit' %}">Audit log</a>
-      <a class="nav-link {% if name == 'team' %}!bg-brand-soft !text-brand-dark{% endif %}" href="{% url 'backoffice:team' %}">Team</a>{% endif %}
+      {% if request.user|is_admin %}<details class="relative" data-menu>
+        <summary class="nav-link flex cursor-pointer list-none items-center gap-1 [&::-webkit-details-marker]:hidden {% if 'refund' in name or name == 'audit' or name == 'team' %}!bg-brand-soft !text-brand-dark{% endif %}">Admin <svg class="h-3 w-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 4l4 4 4-4"/></svg></summary>
+        <div class="absolute left-0 z-20 mt-1 min-w-44 rounded-xl border border-line bg-white p-1 shadow-lg">
+          <a class="nav-link block" href="{% url 'backoffice:refunds' %}">Refunds</a>
+          <a class="nav-link block" href="{% url 'backoffice:audit' %}">Audit log</a>
+          <a class="nav-link block" href="{% url 'backoffice:team' %}">Team</a>
+          {% if request.user.is_superuser %}<a class="nav-link block border-t border-line" href="{{ site.admin_path }}">Site admin</a>{% endif %}
+        </div></details>{% endif %}
       {% endwith %}
     </nav>
-    <div class="flex items-center gap-3 text-sm">
-      {% if request.user.is_superuser %}<a class="nav-link" href="{{ site.admin_path }}">Site admin</a>{% endif %}
-      <span class="hidden text-slate-500 sm:inline">{{ request.user.get_username }} · {{ request.user|role_name }}</span>
-      <form method="post" action="{% url 'backoffice:logout' %}">{% csrf_token %}<button type="submit" class="btn-outline btn-sm">Sign out</button></form>
-    </div>
+    <details class="relative order-2 ml-auto lg:order-none lg:ml-0" data-menu>
+      <summary class="btn-outline btn-sm flex cursor-pointer list-none items-center gap-2 [&::-webkit-details-marker]:hidden">{{ request.user.get_username }} <svg class="h-3 w-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 4l4 4 4-4"/></svg></summary>
+      <div class="absolute right-0 z-20 mt-1 min-w-48 rounded-xl border border-line bg-white p-1 shadow-lg">
+        <p class="px-3 py-2 text-xs text-slate-500">Signed in as {{ request.user|role_name }}</p>
+        <form method="post" action="{% url 'backoffice:logout' %}">{% csrf_token %}<button type="submit" class="nav-link block w-full text-left">Sign out</button></form>
+      </div></details>
     {% endif %}
   </div>
 </header>

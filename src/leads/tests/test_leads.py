@@ -4,6 +4,7 @@ import time
 from datetime import timedelta
 from unittest import mock
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core import mail, signing
 from django.core.management import call_command
@@ -47,7 +48,7 @@ class ContactFormTests(TestCase):
         lead = Lead.objects.get()
         self.assertTrue(lead.consent_given)
         self.assertIsNotNone(lead.consent_at)
-        self.assertEqual(lead.notice_version, "1.0")
+        self.assertEqual(lead.notice_version, settings.PRIVACY_NOTICE_VERSION)
         self.assertEqual(lead.utm_source, "google")
         self.assertEqual(lead.status, Lead.Status.NEW)
         self.assertEqual(len(lead.visitor_hash), 64)
