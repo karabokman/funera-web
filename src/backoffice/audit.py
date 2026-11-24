@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from billing.models import Customer, Refund, Subscription
 from billing.services import client_ip
+from instances.models import Instance
 from leads.models import Lead
 from quotes.models import Quote, QuoteTemplate
 
@@ -28,6 +29,10 @@ ACTIONS = {
     "offer.created": "Created saved offer",
     "offer.edited": "Edited saved offer",
     "offer.deleted": "Deleted saved offer",
+    "instance.created": "Added hosted instance",
+    "instance.edited": "Edited hosted instance",
+    "instance.live": "Marked instance live",
+    "instance.version_updated": "Recorded an instance update",
     "subscription.paused": "Paused subscription",
     "subscription.resumed": "Resumed subscription",
     "subscription.cancelled": "Cancelled subscription",
@@ -43,6 +48,7 @@ AREAS = [
     ("quote", "Quotations", ("quote",)),
     ("offer", "Saved offers", ("offer",)),
     ("subscription", "Subscriptions", ("subscription",)),
+    ("instance", "Hosted instances", ("instance",)),
     ("refund", "Refunds", ("refund",)),
     ("staff", "Sign-ins", ("staff",)),
 ]
@@ -60,6 +66,8 @@ def describe(obj) -> tuple[str, int | None, str]:
         return "subscription", obj.pk, f"{obj.reference} · {obj.customer.business_name}"
     if isinstance(obj, Refund):
         return "refund", obj.pk, f"R{obj.amount} on {obj.payment.subscription.reference}"
+    if isinstance(obj, Instance):
+        return "instance", obj.pk, f"{obj.customer.business_name} (hosted instance)"
     if isinstance(obj, Customer):
         return "customer", obj.pk, obj.business_name
     return "", None, str(obj) if obj is not None else ""

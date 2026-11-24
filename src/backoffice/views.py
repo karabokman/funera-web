@@ -3,6 +3,7 @@ functions the client portal and the website use, so staff and clients are held t
 
 import logging
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.views import LoginView, LogoutView
@@ -21,6 +22,7 @@ from billing.errors import BillingError
 from billing.forms import PauseForm, RefundRequestForm
 from billing.models import Customer, Payment, Refund, Subscription
 from catalog.models import Plan
+from instances.models import Instance
 from leads.models import Lead
 from quotes import services as quote_services
 from quotes.errors import QuoteError
@@ -29,7 +31,7 @@ from quotes.models import Quote, QuoteTemplate
 from quotes.views import pdf_response
 
 from . import audit, audit_log, followups, roles, stats
-from .forms import FollowUpForm, LeadUpdateForm
+from .forms import FollowUpForm, InstanceForm, LeadUpdateForm
 from .mixins import AdminRequiredMixin, StaffRequiredMixin
 
 logger = logging.getLogger(__name__)
@@ -693,3 +695,152 @@ class AuditLogView(AdminRequiredMixin, StaffPage):
             staff_names=audit_log.staff_names(),
             **kwargs,
         )
+
+
+# ------------------------------------------------------------------------------------------------ hosted instances
+LIVE_SUBSCRIPTION = [Subscription.Status.ACTIVE, Subscription.Status.PAST_DUE, Subscription.Status.PAUSED]
+
+
+class InstanceListView(StaffPage):
+    template_name = "backoffice/instances.html"
+    title = "Hosted instances"
+
+    def get_context_data(self, **kwargs):
+        qs = Instance.objects.select_related("customer", "subscription", "owner")
+        status = self.request.GET.get("status", "")
+        show = self.request.GET.get("show", "")
+        query = self.request.GET.get("q", "").strip()
+        if status == "open":
+            qs = qs.filter(status__in=[Instance.Status.AWAITING, Instance.Status.SETTING_UP])
+        elif status in Instance.Status.values:
+            qs = qs.filter(status=status)
+        elif show != "all":
+            qs = qs.exclude(status=Instance.Status.RETIRED)
+        if query:
+            qs = qs.filter(
+                Q(customer__business_name__icontains=query)
+                | Q(url__icontains=query)
+                | Q(host__icontains=query)
+                | Q(version__icontains=query)
+                | Q(admin_name__icontains=query)
+                | Q(admin_email__icontains=query)
+            )
+        instances = list(qs)
+        if show == "outdated":
+            instances = [i for i in instances if i.is_outdated]
+        elif show == "attention":
+            instances = [i for i in instances if i.billing_flag or i.is_overdue or i.stale_for_setup or i.is_outdated]
+        missing = Subscription.objects.filter(status__in=LIVE_SUBSCRIPTION, instance__isnull=True).select_related(
+            "customer", "plan"
+        )
+        return super().get_context_data(
+            page=paginate(self.request, instances),
+            statuses=[("open", "Awaiting or being set up"), *Instance.Status.choices],
+            status=status,
+            show=show,
+            q=query,
+            missing=missing,
+            keep=f"show={show}&" if show else "",
+            latest_version=settings.FUNERA_LATEST_VERSION,
+            **kwargs,
+        )
+
+
+class InstanceDetailView(StaffPage):
+    template_name = "backoffice/instance_detail.html"
+
+    def get_context_data(self, **kwargs):
+        instance = get_object_or_404(
+            Instance.objects.select_related("customer", "subscription__plan", "owner"), pk=kwargs["pk"]
+        )
+        return super().get_context_data(
+            page_title=f"{instance.customer.business_name} · hosted instance",
+            instance=instance,
+            latest_version=settings.FUNERA_LATEST_VERSION,
+            **kwargs,
+        )
+
+
+class InstanceEditView(AdminRequiredMixin, TemplateView):
+    """Add or edit the record of a client's hosted platform (Admin only: it is operational data)."""
+
+    template_name = "backoffice/instance_form.html"
+
+    def setup(self, request, *args, **kwargs):
+        super().setup(request, *args, **kwargs)
+        self.instance = None
+        self.initial_subscription = None
+        if "pk" in kwargs:
+            self.instance = get_object_or_404(Instance.objects.select_related("customer"), pk=kwargs["pk"])
+            self.customer = self.instance.customer
+            return
+        sub_id, customer_id = request.GET.get("subscription", ""), request.GET.get("customer", "")
+        sub = Subscription.objects.select_related("customer").filter(pk=sub_id).first() if sub_id.isdigit() else None
+        self.initial_subscription = sub
+        self.customer = (
+            sub.customer
+            if sub
+            else (Customer.objects.filter(pk=customer_id).first() if customer_id.isdigit() else None)
+        )
+
+    def dispatch(self, request, *args, **kwargs):
+        if self.customer is None and request.user.is_authenticated and request.user.is_staff:
+            messages.error(request, "Open a customer or subscription first, then add its hosted instance.")
+            return redirect("backoffice:instances")
+        return super().dispatch(request, *args, **kwargs)
+
+    def form(self, data=None):
+        initial = {"subscription": self.initial_subscription} if self.initial_subscription else {}
+        return InstanceForm(data, instance=self.instance, customer=self.customer, initial=initial)
+
+    def get_context_data(self, **kwargs):
+        form = kwargs.pop("form", None) or self.form()
+        return super().get_context_data(
+            form=form,
+            instance=self.instance,
+            customer=self.customer,
+            page_title="Edit hosted instance" if self.instance else "New hosted instance",
+            **kwargs,
+        )
+
+    def post(self, request, *args, **kwargs):
+        form = self.form(request.POST)
+        if not form.is_valid():
+            return self.render_to_response(self.get_context_data(form=form))
+        created = self.instance is None
+        saved = form.save()
+        audit.record(
+            request,
+            "instance.created" if created else "instance.edited",
+            saved,
+            f"{saved.get_status_display()}, version {saved.version or 'not recorded'}",
+        )
+        messages.success(request, "Hosted instance saved.")
+        return redirect("backoffice:instance", pk=saved.pk)
+
+
+class InstanceQuickAction(AdminRequiredMixin, View):
+    """One-click updates: mark live, or record that the latest version was deployed."""
+
+    http_method_names = ["post"]
+
+    def post(self, request, pk, action):
+        instance = get_object_or_404(Instance.objects.select_related("customer"), pk=pk)
+        today = timezone.localdate()
+        if action == "live":
+            instance.status = Instance.Status.LIVE
+            instance.went_live_on = instance.went_live_on or today
+            instance.save(update_fields=["status", "went_live_on", "updated_at"])
+            audit.record(request, "instance.live", instance)
+            messages.success(request, f"{instance.customer.business_name} is marked live.")
+        elif action == "updated":
+            if not settings.FUNERA_LATEST_VERSION:
+                messages.error(request, "Set FUNERA_LATEST_VERSION in .env first, so there is a version to record.")
+            else:
+                instance.version, instance.version_updated_on = settings.FUNERA_LATEST_VERSION, today
+                instance.save(update_fields=["version", "version_updated_on", "updated_at"])
+                audit.record(request, "instance.version_updated", instance, f"now on {instance.version}")
+                messages.success(request, f"Recorded as running {instance.version}.")
+        else:
+            raise Http404
+        return redirect(reverse("backoffice:instance", args=[instance.pk]))

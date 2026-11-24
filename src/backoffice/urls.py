@@ -34,6 +34,11 @@ urlpatterns = [
     path("subscriptions/<int:pk>/resume/", v.SubscriptionResume.as_view(), name="subscription_resume"),
     path("subscriptions/<int:pk>/cancel/", v.SubscriptionCancel.as_view(), name="subscription_cancel"),
     path("subscriptions/<int:pk>/refund/", v.RefundRaise.as_view(), name="subscription_refund"),
+    path("instances/", v.InstanceListView.as_view(), name="instances"),
+    path("instances/new/", v.InstanceEditView.as_view(), name="instance_new"),
+    path("instances/<int:pk>/", v.InstanceDetailView.as_view(), name="instance"),
+    path("instances/<int:pk>/edit/", v.InstanceEditView.as_view(), name="instance_edit"),
+    path("instances/<int:pk>/<str:action>/", v.InstanceQuickAction.as_view(), name="instance_action"),
     path("refunds/", v.RefundListView.as_view(), name="refunds"),
     path("refunds/<int:pk>/<str:action>/", v.RefundAction.as_view(), name="refund_action"),
 ]

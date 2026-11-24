@@ -1,0 +1,33 @@
+{% extends "backoffice/base.html" %}{% load staff_ui %}
+{% block staff %}
+<p><a class="text-sm font-semibold text-brand-dark underline" href="{% url 'backoffice:instances' %}">&larr; All hosted instances</a></p>
+<h1 class="h-section mt-2">{{ instance.customer.business_name }} {% include "backoffice/_badge.html" with label=instance.get_status_display tone=instance.status|tone %}</h1>
+<p class="mt-1 text-sm text-slate-600"><a class="underline" href="{% url 'backoffice:customer' instance.customer.pk %}">Customer</a>{% if instance.subscription %} · <a class="underline" href="{% url 'backoffice:subscription' instance.subscription.pk %}">{{ instance.subscription.plan.name }} · {{ instance.subscription.reference }}</a>{% endif %}</p>
+{% if instance.billing_flag %}<p class="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-800" role="alert">{{ instance.billing_flag }}</p>{% endif %}
+{% if instance.is_overdue %}<p class="mt-4 rounded-xl bg-red-50 p-3 text-sm text-red-800" role="alert">Still being set up, and the go-live date of {{ instance.go_live_target|date:"j M Y" }} has passed.</p>{% elif instance.stale_for_setup %}<p class="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">Paid and waiting for {{ instance.days_waiting }} days.</p>{% endif %}
+{% if request.user|is_admin %}<div class="mt-4 flex flex-wrap gap-3">
+  <a class="btn-primary" href="{% url 'backoffice:instance_edit' instance.pk %}">Edit</a>
+  {% if instance.status != "live" %}<form method="post" action="{% url 'backoffice:instance_action' instance.pk 'live' %}">{% csrf_token %}<button type="submit" class="btn-outline">Mark live</button></form>{% endif %}
+  {% if latest_version and instance.version != latest_version %}<form method="post" action="{% url 'backoffice:instance_action' instance.pk 'updated' %}">{% csrf_token %}<button type="submit" class="btn-outline">Record update to {{ latest_version }}</button></form>{% endif %}
+</div>{% endif %}
+<div class="mt-6 grid gap-6 lg:grid-cols-2">
+  <section class="card"><h2 class="text-lg font-bold">Where it runs</h2>
+    <dl class="mt-3 space-y-2 text-sm">
+      <div class="flex justify-between gap-4"><dt class="text-slate-500">Address</dt><dd>{% if instance.url %}<a class="underline" href="{{ instance.url }}" rel="noopener noreferrer" target="_blank">{{ instance.url }}</a>{% else %}—{% endif %}</dd></div>
+      <div class="flex justify-between gap-4"><dt class="text-slate-500">Host</dt><dd>{{ instance.host|default:"—" }}</dd></div>
+      <div class="flex justify-between gap-4"><dt class="text-slate-500">Version</dt><dd>{{ instance.version|default:"Not recorded" }}{% if instance.is_outdated %} {% include "backoffice/_badge.html" with label="Latest is "|add:latest_version tone="warn" %}{% endif %}</dd></div>
+      <div class="flex justify-between gap-4"><dt class="text-slate-500">Version recorded</dt><dd>{{ instance.version_updated_on|date:"j M Y"|default:"—" }}</dd></div>
+      <div class="flex justify-between gap-4"><dt class="text-slate-500">Looked after by</dt><dd>{% if instance.owner %}{{ instance.owner.get_full_name|default:instance.owner.get_username }}{% else %}—{% endif %}</dd></div>
+    </dl></section>
+  <section class="card"><h2 class="text-lg font-bold">Administrator login</h2>
+    <dl class="mt-3 space-y-2 text-sm">
+      <div class="flex justify-between gap-4"><dt class="text-slate-500">Held by</dt><dd>{{ instance.admin_name|default:"—" }}</dd></div>
+      <div class="flex justify-between gap-4"><dt class="text-slate-500">E-mail</dt><dd>{% if instance.admin_email %}<a class="underline" href="mailto:{{ instance.admin_email }}">{{ instance.admin_email }}</a>{% else %}—{% endif %}</dd></div>
+      <div class="flex justify-between gap-4"><dt class="text-slate-500">Note</dt><dd>{{ instance.admin_login_note|default:"—" }}</dd></div>
+    </dl></section>
+  <section class="card"><h2 class="text-lg font-bold">Set-up progress</h2>
+    <p class="mt-1 text-sm text-slate-600">Go-live target: {{ instance.go_live_target|date:"j M Y"|default:"not set" }}</p>
+    <ul class="mt-3 divide-y divide-line text-sm">{% for label, done in instance.checklist %}<li class="flex items-center justify-between py-2"><span>{{ label }}</span>{% if done %}<span class="font-semibold text-emerald-700">{{ done|date:"j M Y" }}</span>{% else %}<span class="text-slate-400">Not yet</span>{% endif %}</li>{% endfor %}</ul></section>
+  <section class="card"><h2 class="text-lg font-bold">Notes</h2><p class="mt-3 whitespace-pre-line text-sm">{{ instance.notes|default:"None." }}</p></section>
+</div>
+{% endblock %}

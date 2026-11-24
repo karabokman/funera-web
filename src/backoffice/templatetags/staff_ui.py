@@ -13,6 +13,8 @@ TONES = {
     "pending": "warn", "active": "good", "past_due": "bad", "paused": "warn",
     # refunds
     "requested": "warn", "processed": "good", "failed": "bad",
+    # hosted instances
+    "awaiting": "warn", "setting_up": "info", "live": "good", "suspended": "bad", "retired": "neutral",
 }  # fmt: skip
 
 

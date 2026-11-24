@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     "leads",
     "billing",
     "quotes",
+    "instances",
     "backoffice",
 ]
 
@@ -166,6 +167,10 @@ REFUND_WINDOW_DAYS = env.int(
 VAT_RATE = env.float("VAT_RATE", default=0.15)
 VAT_NUMBER = env("VAT_NUMBER", default="")
 QUOTE_VALID_DAYS = env.int("QUOTE_VALID_DAYS", default=30)
+# The platform version you currently ship. Live instances on any other version are flagged as out of date. Blank turns the flag off.
+FUNERA_LATEST_VERSION = env("FUNERA_LATEST_VERSION", default="").strip()
+# A client paid but is still not live after this many days: shown as needing attention.
+INSTANCE_SETUP_ALERT_DAYS = env.int("INSTANCE_SETUP_ALERT_DAYS", default=3)
 QUOTE_FOLLOW_UP_DAYS = env.int(
     "QUOTE_FOLLOW_UP_DAYS", default=3
 )  # a sent quotation is due for a chase this many days later

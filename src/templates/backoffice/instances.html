@@ -1,0 +1,29 @@
+{% extends "backoffice/base.html" %}{% load staff_ui %}
+{% block staff %}
+<h1 class="h-section">Hosted instances</h1>
+<p class="mt-1 text-sm text-slate-600">Every customer's own copy of the platform: where it lives, what version it runs, and how far set-up has got.{% if latest_version %} Latest version: <strong>{{ latest_version }}</strong>.{% endif %}</p>
+{% if missing %}<section class="mt-6 rounded-2xl border border-amber-300 bg-amber-50 p-4" aria-labelledby="missing-h">
+  <h2 id="missing-h" class="font-bold text-amber-900">Paying customers with no instance record ({{ missing|length }})</h2>
+  <ul class="mt-2 space-y-1 text-sm">{% for s in missing %}<li class="flex flex-wrap items-center justify-between gap-2"><span>{{ s.customer.business_name }} · {{ s.plan.name }} · {{ s.reference }}</span>{% if request.user|is_admin %}<a class="font-semibold text-brand-dark underline" href="{% url 'backoffice:instance_new' %}?subscription={{ s.pk }}">Add record</a>{% endif %}</li>{% endfor %}</ul></section>{% endif %}
+<form method="get" class="mb-4 mt-6 flex flex-wrap items-end gap-3">
+  <div><label class="label" for="q">Search</label><input class="field !w-64" type="search" id="q" name="q" value="{{ q }}" placeholder="Business, address, version or contact"></div>
+  <div><label class="label" for="status">Status</label><select class="field" id="status" name="status"><option value="">Not retired</option>{% for key, label in statuses %}<option value="{{ key }}" {% if key == status %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+  <div><label class="label" for="show">Show</label><select class="field" id="show" name="show"><option value="">Everything</option><option value="attention" {% if show == "attention" %}selected{% endif %}>Needs attention</option><option value="outdated" {% if show == "outdated" %}selected{% endif %}>Out of date</option><option value="all" {% if show == "all" %}selected{% endif %}>Including retired</option></select></div>
+  <button type="submit" class="btn-primary">Filter</button>
+  {% if q or status or show %}<a class="btn-outline" href="?">Clear</a>{% endif %}
+</form>
+<div class="overflow-x-auto rounded-2xl border border-line bg-white"><table class="w-full text-left text-sm">
+  <thead class="border-b border-line text-xs uppercase tracking-wide text-slate-500"><tr><th class="p-3">Customer</th><th class="p-3">Address</th><th class="p-3">Version</th><th class="p-3">Go-live target</th><th class="p-3">Status</th><th class="p-3">Flags</th></tr></thead>
+  <tbody class="divide-y divide-line">{% for i in page %}<tr class="hover:bg-paper">
+    <td class="p-3"><a class="font-semibold text-brand-dark underline" href="{% url 'backoffice:instance' i.pk %}">{{ i.customer.business_name }}</a></td>
+    <td class="p-3">{{ i.url|default:"—" }}</td>
+    <td class="p-3">{{ i.version|default:"—" }}</td>
+    <td class="p-3">{{ i.go_live_target|date:"j M Y"|default:"—" }}</td>
+    <td class="p-3">{% include "backoffice/_badge.html" with label=i.get_status_display tone=i.status|tone %}</td>
+    <td class="space-x-1 p-3">
+      {% if i.is_overdue %}{% include "backoffice/_badge.html" with label="Past go-live date" tone="bad" %}{% elif i.stale_for_setup %}{% include "backoffice/_badge.html" with label="Waiting too long" tone="bad" %}{% endif %}
+      {% if i.is_outdated %}{% include "backoffice/_badge.html" with label="Out of date" tone="warn" %}{% endif %}
+      {% if i.billing_flag %}{% include "backoffice/_badge.html" with label="Billing" tone="bad" %}{% endif %}</td></tr>
+  {% empty %}<tr><td colspan="6" class="p-6 text-center text-slate-500">No hosted instances match.</td></tr>{% endfor %}</tbody></table></div>
+{% include "backoffice/_pagination.html" %}
+{% endblock %}

@@ -75,6 +75,7 @@ def _row(when, who, what, kind, pk, label, detail, source, ip=""):
             "subscription": "subscription",
             "offer": "offer_edit",
             "customer": "customer",
+            "instance": "instance",
         }.get(kind)
         url = reverse(f"backoffice:{name}", args=[pk]) if name else ""
     return {

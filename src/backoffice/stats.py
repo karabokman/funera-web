@@ -7,6 +7,7 @@ from django.db.models import Count
 from django.utils import timezone
 
 from billing.models import Refund, Subscription, SubscriptionEvent
+from instances.models import Instance
 from leads.models import Lead
 from quotes.models import Quote, QuoteEvent
 
@@ -44,6 +45,10 @@ def dashboard(money: bool = True) -> dict:
         for e in QuoteEvent.objects.select_related("quote")[:8]
     ]
     activity.sort(key=lambda row: row["when"], reverse=True)
+    instances = list(
+        Instance.objects.exclude(status=Instance.Status.RETIRED).select_related("customer", "subscription")
+    )
+    waiting = sorted((i for i in instances if i.is_open), key=lambda i: i.created_at)
     counts = {row["status"]: row["n"] for row in Subscription.objects.values("status").annotate(n=Count("id"))}
     result = {
         "follow_ups": followups.collect(today),
@@ -64,6 +69,12 @@ def dashboard(money: bool = True) -> dict:
                 (Status.CANCELLED, "Cancelled"),
             ]
         },
+        "instances_waiting": waiting[:5],
+        "instances_waiting_count": len(waiting),
+        "instances_attention": [i for i in instances if not i.is_open and (i.billing_flag or i.is_outdated)],
+        "instances_missing": Subscription.objects.filter(
+            status__in=[Status.ACTIVE, Status.PAST_DUE, Status.PAUSED], instance__isnull=True
+        ).count(),
         "funnel": [(label, Lead.objects.filter(status=key).count()) for key, label in Lead.Status.choices],
         "activity": activity[:10],
     }

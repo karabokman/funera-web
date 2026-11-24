@@ -2,7 +2,7 @@
 {% block staff %}
 <p><a class="text-sm font-semibold text-brand-dark underline" href="{% url 'backoffice:subscriptions' %}">&larr; All subscriptions</a></p>
 <h1 class="h-section mt-2">{{ sub.customer.business_name }} · {{ sub.plan.name }} {% include "backoffice/_badge.html" with label=sub.get_status_display tone=sub.status|tone %}</h1>
-<p class="mt-1 text-sm text-slate-600">{{ sub.reference }} · <a class="underline" href="{% url 'backoffice:customer' sub.customer.pk %}">customer</a>{% if quote %} · <a class="underline" href="{% url 'backoffice:quote' quote.pk %}">{{ quote.number }}</a>{% endif %}</p>
+<p class="mt-1 text-sm text-slate-600">{{ sub.reference }} · <a class="underline" href="{% url 'backoffice:customer' sub.customer.pk %}">customer</a>{% if quote %} · <a class="underline" href="{% url 'backoffice:quote' quote.pk %}">{{ quote.number }}</a>{% endif %}{% if sub.instance %} · <a class="underline" href="{% url 'backoffice:instance' sub.instance.pk %}">hosted instance</a>{% elif request.user|is_admin %} · <a class="underline" href="{% url 'backoffice:instance_new' %}?subscription={{ sub.pk }}">add hosted instance record</a>{% endif %}</p>
 <div class="mt-6 grid gap-6 lg:grid-cols-3">
   <section class="card lg:col-span-2"><h2 class="text-lg font-bold">Billing</h2>
     <dl class="mt-3 grid gap-3 text-sm sm:grid-cols-3">

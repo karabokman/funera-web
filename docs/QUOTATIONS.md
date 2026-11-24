@@ -71,3 +71,14 @@ Admins open **Audit log** in the back-office to see who did what, and when.
 - Entries cannot be edited or deleted in the back-office, and the Django admin shows them read-only. Entries stay when a user account is deleted (the username is copied into the entry).
 - Not recorded: changes made directly in the database or to users and groups in the Django admin (the Django admin keeps its own history for objects you edit there).
 - The log contains staff usernames and IP addresses. Mention that in your internal privacy notes if you need to; it is visible to Admins only.
+
+## Hosted instances
+Each client runs their own copy of the platform on your hosting. **Instances** in the back-office keeps one record per client so nothing is lost between "paid" and "live".
+- **Created automatically** the first time a subscription is paid, as *Awaiting set-up*. Subscriptions that were already active before this update show in a yellow box at the top of the Instances page with an **Add record** link.
+- **What a record holds:** status (awaiting, being set up, live, suspended, retired), address, host, version, the go-live date you promised, five set-up dates (instance created, data imported, administrator login given, training done, went live), who at the client holds the administrator login, who looks after it on your side, and notes.
+- **Never type a password** into the record. Write how and when the login was delivered; the field is for a note only.
+- **Flags:** *Waiting too long* (open for more than `INSTANCE_SETUP_ALERT_DAYS`, default 3), *Past go-live date*, *Out of date*, and *Billing*, shown when a live instance's subscription is past due, paused or cancelled.
+- **Out of date** only works if you set `FUNERA_LATEST_VERSION` in `.env` (e.g. `1.4.2`). Leave it blank to switch it off. After you update a client, press **Record update to …** on their page.
+- **The dashboard** lists instances waiting for set-up (oldest first), live instances that need attention, and paying clients with no record.
+- **Who can do what:** all staff can look; only Admins can add, edit, mark live or record an update. Saves are written to the audit log.
+- Nothing here touches the clients' servers: it is a record you keep up to date, not a monitor. Retiring a record does not cancel the subscription.
